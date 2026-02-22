@@ -251,6 +251,26 @@ class YouTubeService {
   getWatchUrl(videoId: string): string {
     return `https://www.youtube.com/watch?v=${videoId}`;
   }
+
+  /**
+   * Refine search query for better results
+   */
+  refineSearchQuery(query: string): string {
+    // Add educational context if not present
+    if (!query.toLowerCase().includes('tutorial') && 
+        !query.toLowerCase().includes('explained') &&
+        !query.toLowerCase().includes('course')) {
+      return `${query} tutorial explained for beginners`;
+    }
+    return query;
+  }
+
+  /**
+   * Search videos (alias for searchVideos)
+   */
+  async search(query: string, maxResults?: number): Promise<YouTubeVideo[]> {
+    return this.searchVideos(query, maxResults);
+  }
 }
 
 export const youtubeService = new YouTubeService();
