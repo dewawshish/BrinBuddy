@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -157,7 +157,7 @@ interface ChallengeItemProps {
   challenge: UserDailyChallenge;
 }
 
-const ChallengeItem = ({ challenge }: ChallengeItemProps) => {
+const ChallengeItem = forwardRef<HTMLDivElement, ChallengeItemProps>(({ challenge }, ref) => {
   const info = challenge.challenge;
   if (!info) return null;
 
@@ -168,6 +168,7 @@ const ChallengeItem = ({ challenge }: ChallengeItemProps) => {
 
   return (
     <motion.div
+      ref={ref}
       layout
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
@@ -222,4 +223,6 @@ const ChallengeItem = ({ challenge }: ChallengeItemProps) => {
       </div>
     </motion.div>
   );
-};
+});
+
+ChallengeItem.displayName = 'ChallengeItem';

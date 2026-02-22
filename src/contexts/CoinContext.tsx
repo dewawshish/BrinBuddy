@@ -36,18 +36,25 @@ export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Try to load from backend if user is present
       if (user) {
         try {
+          // The project's public `profiles` table does not contain `coins`/`unlocked_games` columns
+          // (these used to exist in older schemas). Query stable columns and fall back to
+          // local storage for coins/unlockedGames. This avoids PostgREST 400 errors when
+          // unknown columns are requested.
           const { data, error } = await supabase
             .from('profiles')
-            .select('coins, unlocked_games')
+            .select('total_xp, unlocked_modes')
             .eq('user_id', user.id)
             .maybeSingle();
 
           if (!error && data) {
-            setCoins(data.coins ?? 0);
-            setUnlockedGames(data.unlocked_games ?? []);
+            // Map available backend fields to local state where possible. If the project
+            // later adds `coins`/`unlocked_games` revert this to the proper column names.
+            setCoins((data as any).coins ?? (data.total_xp ?? 0));
+            const unlocked = (data as any).unlocked_games ?? (data.unlocked_modes ?? []);
+            setUnlockedGames(Array.isArray(unlocked) ? unlocked : []);
             // also mirror to localStorage for offline fallback
-            try { localStorage.setItem(LOCAL_KEY, String(data.coins ?? 0)); } catch {}
-            try { localStorage.setItem(LOCAL_UNLOCK_KEY, JSON.stringify(data.unlocked_games ?? [])); } catch {}
+            try { localStorage.setItem(LOCAL_KEY, String((data as any).coins ?? (data.total_xp ?? 0))); } catch {}
+            try { localStorage.setItem(LOCAL_UNLOCK_KEY, JSON.stringify(Array.isArray(unlocked) ? unlocked : [])); } catch {}
             setLoading(false);
             return;
           }
@@ -79,9 +86,17 @@ export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     if (user) {
       try {
+        // Update columns that exist in the current schema. Older columns like
+        // `coins`/`unlocked_games` may not exist and will cause 400 errors — map to
+        // `total_xp`/`unlocked_modes` where possible to keep server in sync.
+        const payload: any = {
+          total_xp: newCoins,
+          unlocked_modes: newUnlocked,
+        };
+
         const { error } = await supabase
           .from('profiles')
-          .update({ coins: newCoins, unlocked_games: newUnlocked })
+          .update(payload)
           .eq('user_id', user.id);
 
         if (error) {
