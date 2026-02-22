@@ -27,6 +27,7 @@ import Games from "./pages/Games";
 import GamePlayer from "./pages/GamePlayer";
 import BrainBuddyAI from "./pages/BrainBuddyAI";
 import NotesGenerator from "./pages/NotesGenerator";
+import VideoSearch from "./pages/VideoSearch";
 
 const queryClient = new QueryClient();
 
@@ -113,6 +114,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <NotesGenerator />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/video-search"
+              element={
+                <ProtectedRoute>
+                  <VideoSearch />
                 </ProtectedRoute>
               }
             />
