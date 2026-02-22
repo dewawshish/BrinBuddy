@@ -1,4 +1,6 @@
+// @ts-ignore - Deno module imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore - Dynamic module import
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -6,6 +8,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// @ts-ignore - Deno global
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
@@ -47,7 +50,7 @@ async function callLovableAI(messages: { role: string; content: string }[]): Pro
   return data.choices?.[0]?.message?.content || "";
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
