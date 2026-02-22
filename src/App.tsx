@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FilterProvider } from "@/contexts/FilterContext";
 import { CoinProvider } from "@/contexts/CoinContext";
+import { AIProvider } from "@/contexts/AIContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
@@ -14,6 +15,7 @@ import VideoPlayer from "./pages/VideoPlayer";
 import Notes from "./pages/Notes";
 import Quiz from "./pages/Quiz";
 import Profile from "./pages/Profile";
+import EnhancedProfile from "./pages/EnhancedProfile";
 import QuizHistory from "./pages/QuizHistory";
 import Leaderboard from "./pages/Leaderboard";
 import About from "./pages/About";
@@ -23,6 +25,8 @@ import Analysis from "./pages/Analysis";
 import Friends from "./pages/Friends";
 import Games from "./pages/Games";
 import GamePlayer from "./pages/GamePlayer";
+import BrainBuddyAI from "./pages/BrainBuddyAI";
+import NotesGenerator from "./pages/NotesGenerator";
 
 const queryClient = new QueryClient();
 
@@ -31,19 +35,20 @@ const App = () => (
     <AuthProvider>
       <FilterProvider>
         <TooltipProvider>
-          <Toaster />
-          <Sonner 
-            position="top-center"
-            toastOptions={{
-              classNames: {
-                toast: 'glass-card border-border',
-                title: 'text-foreground',
-                description: 'text-muted-foreground',
-              },
-            }}
-          />
-          <CoinProvider>
-          <BrowserRouter>
+          <AIProvider>
+            <Toaster />
+            <Sonner 
+              position="top-center"
+              toastOptions={{
+                classNames: {
+                  toast: 'glass-card border-border',
+                  title: 'text-foreground',
+                  description: 'text-muted-foreground',
+                },
+              }}
+            />
+            <CoinProvider>
+            <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
@@ -84,6 +89,30 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/my-profile"
+              element={
+                <ProtectedRoute>
+                  <EnhancedProfile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/ai"
+              element={
+                <ProtectedRoute>
+                  <BrainBuddyAI />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/notes-generator"
+              element={
+                <ProtectedRoute>
+                  <NotesGenerator />
                 </ProtectedRoute>
               }
             />
@@ -148,6 +177,7 @@ const App = () => (
           </Routes>
         </BrowserRouter>
         </CoinProvider>
+            </AIProvider>
         </TooltipProvider>
       </FilterProvider>
     </AuthProvider>

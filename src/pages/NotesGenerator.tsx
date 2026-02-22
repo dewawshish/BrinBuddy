@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, Download, Copy, RefreshCw, BookOpen } from 'lucide-react';
+import { ArrowLeft, Loader2, Download, Copy, RefreshCw, BookOpen, Sparkles, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,8 @@ import { getAIService } from '@/lib/ai/service';
 import { AINotesStructure } from '@/types/ai';
 import { formatNotesForDisplay } from '@/lib/ai/responseFormatter';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { notesGeneratorService, SubjectNotes } from '@/services/notesGeneratorService';
+import Sidebar from '@/components/Sidebar';
 
 const SUBJECTS = [
   'Mathematics',

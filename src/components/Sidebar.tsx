@@ -29,10 +29,10 @@ interface SidebarItem {
 const SIDEBAR_ITEMS: SidebarItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard className="h-5 w-5" />, path: '/dashboard' },
   { id: 'ai', label: 'BrainBuddy AI', icon: <Brain className="h-5 w-5" />, path: '/ai' },
-  { id: 'notes', label: 'Notes', icon: <FileText className="h-5 w-5" />, path: '/notes-generator' },
+  { id: 'notes', label: 'Notes Generator', icon: <FileText className="h-5 w-5" />, path: '/notes-generator' },
   { id: 'search', label: 'Video Search', icon: <Search className="h-5 w-5" />, path: '/video-search' },
-  { id: 'topics', label: 'Topics', icon: <BookOpen className="h-5 w-5" />, path: '/subjects' },
-  { id: 'profile', label: 'Profile', icon: <User className="h-5 w-5" />, path: '/profile' },
+  { id: 'topics', label: 'Subjects', icon: <BookOpen className="h-5 w-5" />, path: '/subjects' },
+  { id: 'profile', label: 'My Profile', icon: <User className="h-5 w-5" />, path: '/my-profile' },
   { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" />, path: '/settings' },
 ];
 
