@@ -61,6 +61,7 @@ function sanitizeInput(input: string, maxLength: number = MAX_TOPIC_LENGTH): { i
   }
 
   sanitized = sanitized
+    // deno-lint-ignore no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/[<>]/g, '')
     .replace(/\\/g, '')
@@ -107,7 +108,11 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
   }
   
   const searchData = await searchResponse.json();
-  const videoIds = searchData.items?.map((item: any) => item.id.videoId).join(',');
+  interface VideoItem {
+    id: { videoId: string };
+    [key: string]: unknown;
+  }
+  const videoIds = searchData.items?.map((item: VideoItem) => item.id.videoId).join(',');
   
   if (!videoIds) {
     return [];
@@ -123,7 +128,20 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
   
   const detailsData = await detailsResponse.json();
   
-  const videos: YouTubeVideo[] = detailsData.items?.map((item: any) => {
+  interface VideoDetailsItem {
+    id: string;
+    snippet: {
+      title: string;
+      description: string;
+      thumbnails: { medium?: { url: string } };
+      channelTitle: string;
+      publishedAt: string;
+    };
+    contentDetails?: { duration: string };
+    statistics?: { viewCount: string; likeCount: string };
+    [key: string]: unknown;
+  }
+  const videos: YouTubeVideo[] = detailsData.items?.map((item: VideoDetailsItem) => {
     const viewCount = parseInt(item.statistics?.viewCount || '0');
     const likeCount = parseInt(item.statistics?.likeCount || '0');
     
@@ -316,7 +334,13 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
     }
 
     const subtasksWithVideos = await Promise.all(
-      (parsedData.subtasks || []).slice(0, 5).map(async (subtask: any, idx: number) => {
+      interface Subtask {
+        id: string;
+        title: string;
+        description?: string;
+        [key: string]: unknown;
+      }
+      (parsedData.subtasks || []).slice(0, 5).map(async (subtask: Subtask, idx: number) => {
         try {
           const videos = await searchYouTube(subtask.searchQuery || `${sanitizedTopic} ${subtask.title}`, YOUTUBE_API_KEY, 5);
           return {

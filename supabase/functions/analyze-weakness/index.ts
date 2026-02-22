@@ -213,7 +213,11 @@ serve(async (req) => {
     const questionsWithTopics: QuestionAttempt[] = [];
     
     try {
-      const questionTexts = questions.map((q: any) => q.questionText).join("\n---\n");
+      interface Question {
+        questionText: string;
+        [key: string]: unknown;
+      }
+      const questionTexts = questions.map((q: Question) => q.questionText).join("\n---\n");
       
       const topicsText = await callLovableAI([
         {
@@ -236,7 +240,7 @@ ${questionTexts}`
       const jsonMatch = topicsText.match(/\[[\s\S]*\]/);
       if (jsonMatch) {
         const topics = JSON.parse(jsonMatch[0]);
-        questions.forEach((q: any, i: number) => {
+        questions.forEach((q: Question, i: number) => {
           questionsWithTopics.push({
             ...q,
             topicName: topics[i] || "General Knowledge"
@@ -248,7 +252,7 @@ ${questionTexts}`
     }
 
     if (questionsWithTopics.length === 0) {
-      questions.forEach((q: any) => {
+      questions.forEach((q: Question) => {
         questionsWithTopics.push({
           ...q,
           topicName: "General Knowledge"
@@ -352,8 +356,21 @@ ${questionTexts}`
     });
 
     // Step 6: Compute weakness scores and update performance
-    const weakTopics: any[] = [];
-    const recommendations: any[] = [];
+    interface WeakTopic {
+      name: string;
+      frequency: number;
+      averageWrongness: number;
+      lastOccurrence?: string;
+      [key: string]: unknown;
+    }
+    interface Recommendation {
+      topic: string;
+      suggestedActions: string[];
+      resourceLinks?: string[];
+      [key: string]: unknown;
+    }
+    const weakTopics: WeakTopic[] = [];
+    const recommendations: Recommendation[] = [];
 
     for (const [topicId, perf] of Object.entries(topicPerformance)) {
       const { data: existingPerf } = await supabaseClient
