@@ -176,7 +176,7 @@ ${context ? `Student: ${context.userName}, Level: ${context.preferences.difficul
    * Call AI model (mock implementation, can be extended for real APIs)
    * In production, this would call OpenAI, Bytez, Groq, or a local model
    */
-  private async callAIModel(prompt: string): Promise<string> {
+  private callAIModel(prompt: string): Promise<string> {
     // Mock response for now - in production, integrate with real AI APIs
     // This is designed to simulate AI responses for testing
 

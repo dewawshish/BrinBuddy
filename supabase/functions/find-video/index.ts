@@ -69,9 +69,9 @@ function sanitizeInput(input: string, maxLength: number = MAX_TOPIC_LENGTH): { i
     }
   }
 
-  const controlCharPattern = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g; // eslint-disable-line no-control-regex
+  // deno-lint-ignore no-control-regex
+  const controlCharPattern = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g;
   sanitized = sanitized
-    // deno-lint-ignore no-control-regex
     .replace(controlCharPattern, '')
     .replace(/[<>]/g, '')
     .replace(/\\/g, '')
