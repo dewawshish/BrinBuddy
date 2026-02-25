@@ -112,6 +112,14 @@ QUALITY RULES:
 - Avoid absolute words (always, never)
 - Explanations must be simple and corrective
 
+DIFFICULTY ASSESSMENT:
+Assess each question's difficulty based on cognitive complexity:
+- "easy": Basic recall, definitions, simple facts, direct reference from notes
+- "medium": Application, analysis, connecting concepts, requires some reasoning
+- "hard": Synthesis, evaluation, complex problem-solving, requires deep integration of multiple concepts
+
+Target distribution: ~40% easy, 40% medium, 20% hard questions
+
 You must respond with ONLY a valid JSON array, no markdown, no code blocks.
 Each question must have this structure:
 {
@@ -120,10 +128,12 @@ Each question must have this structure:
   "question": "Question text",
   "options": ["Option A", "Option B", "Option C", "Option D"],
   "correctAnswer": 0,
+  "difficulty": "medium",
   "explanation": "1-2 lines explaining why the correct answer is right"
 }
 
 Types: concept_check, mechanism_check, application_check, misconception_trap, why_question
+Difficulty: easy, medium, hard
 correctAnswer is the 0-based index of the correct option.`;
 
 // Lovable AI Gateway call
@@ -265,6 +275,18 @@ serve(async (req: Request) => {
       if (cleanContent.startsWith('```')) cleanContent = cleanContent.slice(3);
       if (cleanContent.endsWith('```')) cleanContent = cleanContent.slice(0, -3);
       questions = JSON.parse(cleanContent.trim());
+
+      // Validate that all questions have difficulty field
+      if (Array.isArray(questions)) {
+        questions = questions.map((q: Record<string, unknown>) => {
+          const difficulty = q.difficulty as string;
+          if (!difficulty || !['easy', 'medium', 'hard'].includes(difficulty)) {
+            // Default to 'medium' if missing or invalid
+            return { ...q, difficulty: 'medium' };
+          }
+          return q;
+        });
+      }
     } catch (parseError) {
       console.error("Failed to parse questions:", parseError);
       questions = [
@@ -274,6 +296,7 @@ serve(async (req: Request) => {
           question: "What is the main concept covered in this material?",
           options: ["Option A", "Option B", "Option C", "Option D"],
           correctAnswer: 0,
+          difficulty: "easy",
           explanation: "This tests your understanding of the core concept presented."
         },
         {
@@ -282,6 +305,7 @@ serve(async (req: Request) => {
           question: "How does this process work?",
           options: ["Statement A", "Statement B", "Statement C", "Statement D"],
           correctAnswer: 1,
+          difficulty: "medium",
           explanation: "Understanding the mechanism helps you apply the concept."
         },
         {
@@ -290,6 +314,7 @@ serve(async (req: Request) => {
           question: "How can this knowledge be applied in practice?",
           options: ["Application A", "Application B", "Application C", "Application D"],
           correctAnswer: 2,
+          difficulty: "medium",
           explanation: "Real-world application demonstrates true understanding."
         },
         {
@@ -298,6 +323,7 @@ serve(async (req: Request) => {
           question: "Which of the following is a common misconception?",
           options: ["Misconception A", "Misconception B", "Misconception C", "Correct understanding"],
           correctAnswer: 3,
+          difficulty: "hard",
           explanation: "Identifying misconceptions helps solidify correct understanding."
         },
         {
@@ -306,6 +332,7 @@ serve(async (req: Request) => {
           question: "Why is this concept important?",
           options: ["Reason A", "Reason B", "Reason C", "Reason D"],
           correctAnswer: 1,
+          difficulty: "medium",
           explanation: "Understanding 'why' deepens your comprehension."
         }
       ];

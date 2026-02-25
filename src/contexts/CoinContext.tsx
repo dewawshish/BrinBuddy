@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { unlockGameTransaction } from '@/services/gameUnlockService';
 
 type CoinContextType = {
   coins: number;
@@ -137,15 +138,41 @@ export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const unlockGame = async (gameId: string, price: number) => {
+    if (!user) return false;
+
+    // Check local state first to avoid unnecessary server calls
     if (unlockedGames.includes(gameId)) return true;
     if (coins < price) return false;
-    const success = await deductCoins(price);
-    if (!success) return false;
-    const newUnlocked = [...unlockedGames, gameId];
-    setUnlockedGames(newUnlocked);
-    await persist(coins - price, newUnlocked);
-    toast.success('Game unlocked!');
-    return true;
+
+    try {
+      // Call the transactional unlock function on the server
+      const result = await unlockGameTransaction(user.id, gameId);
+
+      if (!result.success) {
+        // Don't show error toast here - let UI components handle it
+        return false;
+      }
+
+      // Update local state with new values from transaction
+      const newCoins = result.coins_remaining ?? coins - price;
+      const newUnlocked = [...unlockedGames, gameId];
+
+      setCoins(newCoins);
+      setUnlockedGames(newUnlocked);
+
+      // Persist to localStorage
+      try {
+        localStorage.setItem(LOCAL_KEY, String(newCoins));
+        localStorage.setItem(LOCAL_UNLOCK_KEY, JSON.stringify(newUnlocked));
+      } catch {
+        // Ignore localStorage errors
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error unlocking game:', error);
+      return false;
+    }
   };
 
   const isUnlocked = (gameId: string) => unlockedGames.includes(gameId);

@@ -24,23 +24,7 @@ import Logo from '@/components/Logo';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCoins } from '@/contexts/CoinContext';
-
-interface Question {
-  id: number;
-  type?: string;
-  difficulty?: string;
-  question: string;
-  options: string[];
-  correctAnswer: number;
-  explanation?: string;
-}
-
-interface QuestionTiming {
-  questionIndex: number;
-  startTime: number;
-  endTime?: number;
-  timeTakenSeconds: number;
-}
+import type { Question, QuestionTiming, QuestionDifficulty } from '@/types/quiz';
 
 const Quiz = () => {
   const { quizId } = useParams();
@@ -64,6 +48,8 @@ const Quiz = () => {
   const [savedQuizId, setSavedQuizId] = useState<string | null>(null);
   const [questionTimings, setQuestionTimings] = useState<QuestionTiming[]>([]);
   const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
+  const [questionRewards, setQuestionRewards] = useState<number[]>([]);
+  const [totalCoinsEarned, setTotalCoinsEarned] = useState(0);
 
   useEffect(() => {
     if (quizId && user) {
@@ -167,7 +153,7 @@ const Quiz = () => {
     // Record time taken for this question
     const endTime = Date.now();
     const timeTakenSeconds = (endTime - questionStartTime) / 1000;
-    
+
     setQuestionTimings(prev => [...prev, {
       questionIndex: currentQuestion,
       startTime: questionStartTime,
@@ -180,9 +166,18 @@ const Quiz = () => {
     setAnswers(newAnswers);
 
     const isCorrect = selectedAnswer === question.correctAnswer;
+    let reward = 0;
+
+    // Calculate reward based on difficulty if answer is correct
     if (isCorrect) {
-      toast.success('Correct!');
+      reward = getDifficultyReward(question.difficulty);
+      setQuestionRewards(prev => [...prev, reward]);
+      setTotalCoinsEarned(prev => prev + reward);
+      toast.success(`Correct! +${reward} coins`, {
+        duration: 2000,
+      });
     } else {
+      setQuestionRewards(prev => [...prev, 0]);
       toast.error('Not quite right');
     }
   };
@@ -242,27 +237,33 @@ const Quiz = () => {
   };
 
   const saveResults = async () => {
-    if (!user || !quizId) return;
+    if (!user || !quizId || !savedQuizId) return;
 
     const score = calculateScore();
     const percentage = (score / questions.length) * 100;
 
     try {
-      await supabase.from('quiz_results').insert({
-        user_id: user.id,
-        todo_id: quizId,
-        score: percentage,
-        correct_answers: score,
-        total_questions: questions.length,
-        answers: answers,
+      // Call the new secure submit-quiz-results endpoint
+      const { data, error } = await supabase.functions.invoke('submit-quiz-results', {
+        body: {
+          quizId: savedQuizId,
+          answers: answers,
+          coinRewards: questionRewards,
+          totalCoins: totalCoinsEarned,
+        },
       });
 
-        // Award coins for correct answers (10 coins per correct answer)
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to submit quiz results');
+
+      // Update local coin state with the coins awarded from the server
+      if (data.coins_earned > 0) {
         try {
-          await addCoins(score * 10);
+          await addCoins(data.coins_earned);
         } catch (err) {
-          console.error('Error awarding coins:', err);
+          console.error('Error updating local coin state:', err);
         }
+      }
 
       // Analyze weakness after saving results
       if (videoId && savedQuizId) {
@@ -274,7 +275,7 @@ const Quiz = () => {
         }));
 
         try {
-          const { data, error } = await supabase.functions.invoke('analyze-weakness', {
+          const { data: weaknessData, error: weaknessError } = await supabase.functions.invoke('analyze-weakness', {
             body: {
               todoId: quizId,
               videoId,
@@ -283,10 +284,10 @@ const Quiz = () => {
             },
           });
 
-          if (error) {
-            console.error('Weakness analysis error:', error);
-          } else if (data?.weakTopics?.length > 0) {
-            toast.info(`Found ${data.weakTopics.length} topic(s) to improve`, {
+          if (weaknessError) {
+            console.error('Weakness analysis error:', weaknessError);
+          } else if (weaknessData?.weakTopics?.length > 0) {
+            toast.info(`Found ${weaknessData.weakTopics.length} topic(s) to improve`, {
               icon: <AlertCircle className="h-4 w-4 text-primary" />,
             });
           }
@@ -294,8 +295,16 @@ const Quiz = () => {
           console.error('Weakness analysis failed:', analysisError);
         }
       }
+
+      // Show success message with coins earned
+      if (data.coins_earned > 0) {
+        toast.success(`Quiz complete! +${data.coins_earned} coins earned`, {
+          duration: 3000,
+        });
+      }
     } catch (error) {
       console.error('Error saving results:', error);
+      toast.error('Failed to save quiz results');
     }
   };
 
@@ -317,6 +326,9 @@ const Quiz = () => {
     setIsSubmitted(false);
     setAdaptiveMode(false);
     setCurrentDifficulty('medium');
+    setQuestionRewards([]);
+    setTotalCoinsEarned(0);
+    setQuestionStartTime(Date.now());
   };
 
   const getDifficultyColor = (diff?: string) => {
@@ -347,6 +359,19 @@ const Quiz = () => {
       case 'why_question': return 'Understanding Why';
       case 'adaptive': return 'Adaptive Question';
       default: return 'Question';
+    }
+  };
+
+  const getDifficultyReward = (difficulty?: QuestionDifficulty | string): number => {
+    switch (difficulty) {
+      case 'easy':
+        return 2;
+      case 'medium':
+        return 5;
+      case 'hard':
+        return 10;
+      default:
+        return 0;
     }
   };
 
