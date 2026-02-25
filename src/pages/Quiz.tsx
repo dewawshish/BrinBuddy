@@ -240,7 +240,6 @@ const Quiz = () => {
     if (!user || !quizId || !savedQuizId) return;
 
     const score = calculateScore();
-    const percentage = (score / questions.length) * 100;
 
     try {
       // Call the new secure submit-quiz-results endpoint
