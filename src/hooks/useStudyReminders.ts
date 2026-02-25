@@ -127,9 +127,9 @@ export const useStudyReminders = () => {
     }
   };
 
-  const toggleReminder = async (id: string): Promise<boolean> => {
+  const toggleReminder = (id: string): Promise<boolean> => {
     const reminder = reminders.find(r => r.id === id);
-    if (!reminder) return false;
+    if (!reminder) return Promise.resolve(false);
 
     return updateReminder(id, { is_enabled: !reminder.is_enabled });
   };

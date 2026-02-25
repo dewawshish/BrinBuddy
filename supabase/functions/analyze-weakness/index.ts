@@ -1,4 +1,13 @@
+// Deno type declarations
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
+
+// @ts-expect-error - Deno module imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-expect-error - Deno module imports
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Allowed origins for CORS
@@ -47,6 +56,43 @@ interface YouTubeVideo {
   videoId: string;
   title: string;
   channel: string;
+}
+
+interface WeakTopic {
+  topicId?: string;
+  topicName?: string;
+  weaknessScore?: number;
+  accuracy?: number;
+  name?: string;
+  frequency?: number;
+  averageWrongness?: number;
+  [key: string]: unknown;
+}
+
+interface Question {
+  questionText: string;
+  isCorrect?: boolean;
+  timeTakenSeconds?: number;
+  difficulty?: string;
+  [key: string]: unknown;
+}
+
+interface Recommendation {
+  user_id?: string;
+  topic_id?: string;
+  todo_id?: unknown;
+  recommendation_type?: string;
+  title?: string;
+  description?: string;
+  priority?: number;
+  weakness_score?: number;
+  video_id?: string | null;
+  video_title?: string | null;
+  video_channel?: string | null;
+  expires_at?: string;
+  topic?: unknown;
+  suggestedActions?: unknown;
+  [key: string]: unknown;
 }
 
 // YouTube search helper function
@@ -160,7 +206,7 @@ async function callLovableAI(messages: { role: string; content: string }[]): Pro
   return data.choices?.[0]?.message?.content || "";
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     const corsHeaders = getCORSHeaders(req.headers.get('origin'));
     return new Response(null, { headers: corsHeaders });
@@ -213,11 +259,7 @@ serve(async (req) => {
     const questionsWithTopics: QuestionAttempt[] = [];
     
     try {
-      interface Question {
-        questionText: string;
-        [key: string]: unknown;
-      }
-      const questionTexts = questions.map((q: Question) => q.questionText).join("\n---\n");
+      const questionTexts = (questions as Question[]).map((q: Question) => q.questionText).join("\n---\n");
       
       const topicsText = await callLovableAI([
         {
@@ -242,7 +284,10 @@ ${questionTexts}`
         const topics = JSON.parse(jsonMatch[0]);
         questions.forEach((q: Question, i: number) => {
           questionsWithTopics.push({
-            ...q,
+            questionText: q.questionText,
+            isCorrect: (q as Record<string, unknown>).isCorrect as boolean || false,
+            timeTakenSeconds: (q as Record<string, unknown>).timeTakenSeconds as number || 0,
+            difficulty: (q as Record<string, unknown>).difficulty as string || "medium",
             topicName: topics[i] || "General Knowledge"
           });
         });
@@ -254,7 +299,10 @@ ${questionTexts}`
     if (questionsWithTopics.length === 0) {
       questions.forEach((q: Question) => {
         questionsWithTopics.push({
-          ...q,
+          questionText: q.questionText,
+          isCorrect: (q as Record<string, unknown>).isCorrect as boolean || false,
+          timeTakenSeconds: (q as Record<string, unknown>).timeTakenSeconds as number || 0,
+          difficulty: (q as Record<string, unknown>).difficulty as string || "medium",
           topicName: "General Knowledge"
         });
       });
@@ -355,20 +403,6 @@ ${questionTexts}`
       perf.totalTimeSeconds += q.timeTakenSeconds || 0;
     });
 
-    // Step 6: Compute weakness scores and update performance
-    interface WeakTopic {
-      name: string;
-      frequency: number;
-      averageWrongness: number;
-      lastOccurrence?: string;
-      [key: string]: unknown;
-    }
-    interface Recommendation {
-      topic: string;
-      suggestedActions: string[];
-      resourceLinks?: string[];
-      [key: string]: unknown;
-    }
     const weakTopics: WeakTopic[] = [];
     const recommendations: Recommendation[] = [];
 
@@ -539,10 +573,10 @@ ${questionTexts}`
 
     if (allResults && allResults.length > 0) {
       const totalQuizzes = allResults.length;
-      const totalCorrect = allResults.reduce((sum, r) => sum + r.correct_answers, 0);
-      const totalQuestions = allResults.reduce((sum, r) => sum + r.total_questions, 0);
-      const averageScore = allResults.reduce((sum, r) => sum + r.score, 0) / totalQuizzes;
-      const bestScore = Math.max(...allResults.map(r => r.score));
+      const totalCorrect = allResults.reduce((sum: number, r: Record<string, unknown>) => sum + ((r.correct_answers as number) || 0), 0);
+      const totalQuestions = allResults.reduce((sum: number, r: Record<string, unknown>) => sum + ((r.total_questions as number) || 0), 0);
+      const averageScore = allResults.reduce((sum: number, r: Record<string, unknown>) => sum + ((r.score as number) || 0), 0) / totalQuizzes;
+      const bestScore = Math.max(...allResults.map((r: Record<string, unknown>) => (r.score as number) || 0));
 
       await supabaseClient
         .from("leaderboard_stats")

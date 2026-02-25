@@ -1,4 +1,13 @@
+// Deno type declarations
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
+
+// @ts-expect-error - Deno module imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-expect-error - Deno module imports
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Allowed origins for CORS
@@ -30,8 +39,8 @@ const FORBIDDEN_PATTERNS = [
   /forget\s+(all\s+)?previous/i,
   /system\s*:\s*/i,
   /\[\s*INST\s*\]/i,
-  /\<\s*\|\s*im_start\s*\|\s*\>/i,
-  /\<\s*\|\s*im_end\s*\|\s*\>/i,
+  /<\s*\|\s*im_start\s*\|\s*>/i,
+  /<\s*\|\s*im_end\s*\|\s*>/i,
   /\{\{\s*system/i,
   /pretend\s+you\s+are/i,
   /act\s+as\s+if/i,
@@ -60,9 +69,10 @@ function sanitizeInput(input: string, maxLength: number = MAX_TOPIC_LENGTH): { i
     }
   }
 
+  const controlCharPattern = /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g; // eslint-disable-line no-control-regex
   sanitized = sanitized
     // deno-lint-ignore no-control-regex
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(controlCharPattern, '')
     .replace(/[<>]/g, '')
     .replace(/\\/g, '')
     .trim();
@@ -133,7 +143,7 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
     snippet: {
       title: string;
       description: string;
-      thumbnails: { medium?: { url: string } };
+      thumbnails: { medium?: { url: string }; default?: { url: string } };
       channelTitle: string;
       publishedAt: string;
     };
@@ -162,8 +172,8 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
       channel: item.snippet.channelTitle,
       viewCount: formatViewCount(viewCount),
       publishedAt: item.snippet.publishedAt,
-      duration: item.contentDetails.duration,
-      durationFormatted: formatDuration(item.contentDetails.duration),
+      duration: item.contentDetails?.duration || "PT0S",
+      durationFormatted: formatDuration(item.contentDetails?.duration || "PT0S"),
       thumbnail,
       engagementScore: Math.min(100, Math.max(1, engagementScore / 1000)),
     };
@@ -226,7 +236,7 @@ async function callLovableAI(messages: { role: string; content: string }[]): Pro
   return data.choices?.[0]?.message?.content || "";
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     const corsHeaders = getCORSHeaders(req.headers.get('origin'));
     return new Response(null, { headers: corsHeaders });
@@ -333,13 +343,15 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
       throw new Error('No videos found for this topic');
     }
 
+    interface Subtask {
+      id: string;
+      title: string;
+      searchQuery?: string;
+      description?: string;
+      [key: string]: unknown;
+    }
+
     const subtasksWithVideos = await Promise.all(
-      interface Subtask {
-        id: string;
-        title: string;
-        description?: string;
-        [key: string]: unknown;
-      }
       (parsedData.subtasks || []).slice(0, 5).map(async (subtask: Subtask, idx: number) => {
         try {
           const videos = await searchYouTube(subtask.searchQuery || `${sanitizedTopic} ${subtask.title}`, YOUTUBE_API_KEY, 5);

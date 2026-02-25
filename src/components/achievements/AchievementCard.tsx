@@ -25,7 +25,6 @@ const AchievementCard = ({
   progress, 
   userAchievement,
   isNew = false,
-  onClaim 
 }: AchievementCardProps) => {
   const [showReward, setShowReward] = useState(false);
   

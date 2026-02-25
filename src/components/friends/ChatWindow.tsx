@@ -38,21 +38,24 @@ const ChatWindow = ({ friendUserId, friendName }: ChatWindowProps) => {
     }
   };
 
-  const handleShareContent = async (type: string, content: any) => {
-    try {
-      await sendMessage(
-        type === 'quiz_share' ? '📊 Shared a quiz result' : '📝 Shared study notes',
-        type,
-        content
-      );
-      setShareOpen(false);
-    } catch {
+  const handleShareContent = (type: string, content: unknown) => {
+    sendMessage(
+      type === 'quiz_share' ? '📊 Shared a quiz result' : '📝 Shared study notes',
+      type,
+      content
+    ).catch(() => {
       // Error handled in hook
-    }
+    });
+    setShareOpen(false);
   };
 
   const renderSharedContent = (msg: ChatMessage) => {
     if (msg.messageType === 'quiz_share' && msg.sharedContent) {
+      const quizContent = msg.sharedContent as Record<string, unknown>;
+      const score = quizContent.score as number;
+      const correct = quizContent.correct as number;
+      const total = quizContent.total as number;
+      const topic = quizContent.topic as string | undefined;
       return (
         <div className="mt-2 p-2 rounded-lg bg-primary/10 border border-primary/20">
           <div className="flex items-center gap-2 text-xs font-medium text-primary">
@@ -60,22 +63,24 @@ const ChatWindow = ({ friendUserId, friendName }: ChatWindowProps) => {
             Quiz Result
           </div>
           <p className="text-xs mt-1">
-            Score: {msg.sharedContent.score}% ({msg.sharedContent.correct}/{msg.sharedContent.total})
+            Score: {score}% ({correct}/{total})
           </p>
-          {msg.sharedContent.topic && (
-            <p className="text-xs text-muted-foreground">Topic: {msg.sharedContent.topic}</p>
+          {topic && (
+            <p className="text-xs text-muted-foreground">Topic: {topic}</p>
           )}
         </div>
       );
     }
     if (msg.messageType === 'notes_share' && msg.sharedContent) {
+      const notesContent = msg.sharedContent as Record<string, unknown>;
+      const title = String(notesContent.title || 'Study Notes');
       return (
         <div className="mt-2 p-2 rounded-lg bg-secondary/10 border border-secondary/20">
           <div className="flex items-center gap-2 text-xs font-medium text-secondary">
             <BookOpen className="h-3 w-3" />
             Study Notes
           </div>
-          <p className="text-xs mt-1 line-clamp-3">{msg.sharedContent.title}</p>
+          <p className="text-xs mt-1 line-clamp-3">{title}</p>
         </div>
       );
     }

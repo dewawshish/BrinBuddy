@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Brain, Sparkles } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Sidebar from '@/components/Sidebar';
 import BrainBuddyAIPanel from '@/components/BrainBuddyAIPanel';
 

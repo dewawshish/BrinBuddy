@@ -17,7 +17,7 @@ import { parseNotesResponse, validateAIResponse } from './responseFormatter';
 
 class BrainBuddyAIService {
   private config: AIServiceConfig;
-  private chatHistory: Map<string, any[]> = new Map();
+  private chatHistory: Map<string, Record<string, unknown>[]> = new Map();
 
   constructor(config: AIServiceConfig) {
     this.config = config;
@@ -65,7 +65,7 @@ class BrainBuddyAIService {
    */
   async solveDoubt(request: AIDoubtsRequest): Promise<AIResponse> {
     try {
-      const prompt = buildDoubtsPrompt(request.doubt, request.subject, request.context.preferences);
+      const prompt = buildDoubtsPrompt(request.doubt, request.subject, request.context.preferences as unknown as Record<string, unknown>);
       const response = await this.callAIModel(prompt);
 
       const validation = validateAIResponse(response);
@@ -188,7 +188,7 @@ ${context ? `Student: ${context.userName}, Level: ${context.preferences.difficul
    * Generate mock AI response (for development)
    * Replace this with actual API calls in production
    */
-  private generateMockResponse(prompt: string): string {
+  private generateMockResponse(prompt: string): Promise<string> {
     // Simulate API delay
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -289,7 +289,7 @@ You've got this! Start with the fundamentals and build up.`;
     // Simple rate limiting: max 30 requests per minute
     const history = this.chatHistory.get(userId) || [];
     const oneMinuteAgo = Date.now() - 60000;
-    const recentRequests = history.filter((h) => h.timestamp > oneMinuteAgo).length;
+    const recentRequests = history.filter((h) => (h.timestamp as number) > oneMinuteAgo).length;
 
     return recentRequests < 30;
   }
@@ -297,7 +297,7 @@ You've got this! Start with the fundamentals and build up.`;
   /**
    * Add to chat history
    */
-  private addToHistory(userId: string, entry: any): void {
+  private addToHistory(userId: string, entry: Record<string, unknown>): void {
     if (!this.chatHistory.has(userId)) {
       this.chatHistory.set(userId, []);
     }
@@ -314,7 +314,7 @@ You've got this! Start with the fundamentals and build up.`;
   /**
    * Get chat history
    */
-  getHistory(userId: string): any[] {
+  getHistory(userId: string): Record<string, unknown>[] {
     return this.chatHistory.get(userId) || [];
   }
 

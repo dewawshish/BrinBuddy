@@ -1,4 +1,6 @@
+// @ts-expect-error - Deno module imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-expect-error - Deno module imports
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Allowed origins for CORS
@@ -186,7 +188,7 @@ For each question:
     const parsed = JSON.parse(jsonMatch[0]);
     const questions = parsed.questions || [];
 
-    const questionsWithIds = questions.map((q: any, index: number) => {
+    const questionsWithIds = questions.map((q: Record<string, unknown>, index: number) => {
       const matchingTopic = sortedTopics.find(
         t => t.name.toLowerCase() === (q.topicName || "").toLowerCase()
       );

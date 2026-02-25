@@ -4,11 +4,9 @@ import {
   Minimize2,
   Maximize2,
   Volume2,
-  Settings,
   ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
 
 interface YouTubeWindowProps {
   videoId: string;
@@ -22,7 +20,6 @@ interface YouTubeWindowProps {
 const YouTubeFloatingWindow: React.FC<YouTubeWindowProps> = ({
   videoId,
   title,
-  windowId,
   onClose,
   onPositionChange,
   onSizeChange,
@@ -92,20 +89,20 @@ const YouTubeFloatingWindow: React.FC<YouTubeWindowProps> = ({
 
   React.useEffect(() => {
     if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove as any);
-      window.addEventListener('mouseup', handleMouseUp);
+      globalThis.addEventListener('mousemove', handleMouseMove as unknown as EventListener);
+      globalThis.addEventListener('mouseup', handleMouseUp as unknown as EventListener);
     }
 
     if (isResizing) {
-      window.addEventListener('mousemove', handleResizeMove as any);
-      window.addEventListener('mouseup', handleResizeEnd);
+      globalThis.addEventListener('mousemove', handleResizeMove as unknown as EventListener);
+      globalThis.addEventListener('mouseup', handleResizeEnd as unknown as EventListener);
     }
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove as any);
-      window.removeEventListener('mouseup', handleMouseUp);
-      window.removeEventListener('mousemove', handleResizeMove as any);
-      window.removeEventListener('mouseup', handleResizeEnd);
+      globalThis.removeEventListener('mousemove', handleMouseMove as unknown as EventListener);
+      globalThis.removeEventListener('mouseup', handleMouseUp as unknown as EventListener);
+      globalThis.removeEventListener('mousemove', handleResizeMove as unknown as EventListener);
+      globalThis.removeEventListener('mouseup', handleResizeEnd as unknown as EventListener);
     };
   }, [isDragging, isResizing, position, size, dragOffset]);
 

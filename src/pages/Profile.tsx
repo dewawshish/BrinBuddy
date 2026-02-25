@@ -33,7 +33,7 @@ const Profile = () => {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
   const [credits, setCredits] = useState<UserCredits | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [wasReset, setWasReset] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url || null);
@@ -42,8 +42,6 @@ const Profile = () => {
   // Editable profile fields
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editName, setEditName] = useState(profile?.name || '');
-  const [editClass, setEditClass] = useState('');
-  const [editTargetExams, setEditTargetExams] = useState('');
   const [editUserRole, setEditUserRole] = useState<'student' | 'teacher' | 'admin'>('student');
 
   // AI Preferences
@@ -54,14 +52,11 @@ const Profile = () => {
   });
 
   // Stats
-  const [aiStats, setAiStats] = useState({
+  const [aiStats, _setAiStats] = useState({
     notesGenerated: 0,
     aiUsageCount: 0,
     topicsCompleted: 0,
   });
-
-  const displayName = profile?.name || user?.user_metadata?.name || user?.email?.split('@')[0] || 'Student';
-  const email = user?.email || '';
 
   const { coins } = useCoins();
 
@@ -120,7 +115,7 @@ const Profile = () => {
 
       setAvatarUrl(publicUrl);
       toast.success('Profile picture updated!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error uploading avatar:', error);
       toast.error('Failed to upload profile picture');
     } finally {
@@ -131,8 +126,8 @@ const Profile = () => {
   const fetchCredits = async () => {
     try {
       // Use the check_and_reset_credits function which handles monthly reset
-      const { data, error } = await supabase.rpc('check_and_reset_credits', { 
-        uid: user?.id 
+      const { data, error } = await supabase.rpc('check_and_reset_credits', {
+        uid: user?.id
       });
 
       if (error) {
@@ -143,7 +138,7 @@ const Profile = () => {
           .select('credits_remaining, credits_used, last_reset_at')
           .eq('user_id', user?.id)
           .single();
-        
+
         if (!directError && directData) {
           setCredits(directData);
         }
@@ -165,20 +160,27 @@ const Profile = () => {
     }
   };
 
-  const usedPercent = TOTAL_MONTHLY_CREDITS > 0 
-    ? ((credits?.credits_used || 0) / TOTAL_MONTHLY_CREDITS) * 100 
-    : 0;
+  const handleSaveProfile = async () => {
+    if (!user) return;
 
-  // Calculate next reset date (1 month from last reset)
-  const getNextResetDate = () => {
-    if (!credits?.last_reset_at) return null;
-    const lastReset = new Date(credits.last_reset_at);
-    const nextReset = new Date(lastReset);
-    nextReset.setMonth(nextReset.getMonth() + 1);
-    return nextReset;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          name: editName,
+          role: editUserRole,
+        })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setIsEditingProfile(false);
+      toast.success('Profile updated successfully!');
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast.error('Failed to update profile');
+    }
   };
-
-  const nextResetDate = getNextResetDate();
 
   return (
     <div className="min-h-screen pb-8">
@@ -271,7 +273,7 @@ const Profile = () => {
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-medium">Role</label>
-                  <Select value={editUserRole} onValueChange={(v: any) => setEditUserRole(v)}>
+                  <Select value={editUserRole} onValueChange={(v: string) => setEditUserRole(v as 'student' | 'teacher' | 'admin')}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -282,24 +284,8 @@ const Profile = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Class/Stream</label>
-                  <Input
-                    value={editClass}
-                    onChange={(e) => setEditClass(e.target.value)}
-                    placeholder="e.g., 10th CBSE, Grade 12"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">Target Exams</label>
-                  <Input
-                    value={editTargetExams}
-                    onChange={(e) => setEditTargetExams(e.target.value)}
-                    placeholder="e.g., JEE, NEET, Board"
-                  />
-                </div>
               </div>
-              <Button className="w-full gap-2" variant="neon">
+              <Button className="w-full gap-2" variant="neon" onClick={handleSaveProfile}>
                 <Save className="h-4 w-4" />
                 Save Changes
               </Button>
@@ -394,8 +380,8 @@ const Profile = () => {
                   <label className="text-sm font-medium">Preferred Learning Style</label>
                   <Select
                     value={aiPreferences.learningStyle}
-                    onValueChange={(v: any) =>
-                      setAiPreferences({ ...aiPreferences, learningStyle: v })
+                    onValueChange={(v: string) =>
+                      setAiPreferences({ ...aiPreferences, learningStyle: v as 'quick' | 'detailed' | 'exam-focused' })
                     }
                   >
                     <SelectTrigger>
@@ -422,8 +408,8 @@ const Profile = () => {
                   <label className="text-sm font-medium">Difficulty Level</label>
                   <Select
                     value={aiPreferences.difficultyLevel}
-                    onValueChange={(v: any) =>
-                      setAiPreferences({ ...aiPreferences, difficultyLevel: v })
+                    onValueChange={(v: string) =>
+                      setAiPreferences({ ...aiPreferences, difficultyLevel: v as 'beginner' | 'intermediate' | 'advanced' })
                     }
                   >
                     <SelectTrigger>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Play, Clock, Eye, User, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Play, User, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useCoins } from '@/contexts/CoinContext';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';

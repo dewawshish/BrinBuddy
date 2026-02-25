@@ -8,10 +8,8 @@ import {
   Trophy,
   AlertTriangle,
   TrendingUp,
-  TrendingDown,
   Target,
   Zap,
-  CheckCircle2,
   XCircle,
   Clock,
   Loader2,
@@ -67,18 +65,18 @@ const StrengthsWeaknesses = () => {
 
       if (error) throw error;
 
-      const formattedTopics: TopicPerformance[] = (data || []).map((t: any) => ({
-        id: t.id,
-        topicId: t.topic_id,
-        topicName: t.topics?.name || 'Unknown Topic',
-        weaknessScore: t.weakness_score,
+      const formattedTopics: TopicPerformance[] = (data || []).map((t: Record<string, unknown>) => ({
+        id: t.id as string,
+        topicId: t.topic_id as string,
+        topicName: (t.topics as Record<string, unknown>)?.name as string || 'Unknown Topic',
+        weaknessScore: t.weakness_score as number,
         strengthStatus: t.strength_status as 'strong' | 'moderate' | 'weak',
-        correctAnswers: t.correct_answers,
-        totalQuestions: t.total_questions,
-        avgTime: t.avg_time_seconds,
-        wrongOnEasy: t.wrong_on_easy,
-        wrongOnMedium: t.wrong_on_medium,
-        wrongOnHard: t.wrong_on_hard,
+        correctAnswers: t.correct_answers as number,
+        totalQuestions: t.total_questions as number,
+        avgTime: t.avg_time_seconds as number,
+        wrongOnEasy: t.wrong_on_easy as number,
+        wrongOnMedium: t.wrong_on_medium as number,
+        wrongOnHard: t.wrong_on_hard as number,
       }));
 
       setTopics(formattedTopics);
@@ -87,10 +85,6 @@ const StrengthsWeaknesses = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getAccuracy = (correct: number, total: number) => {
-    return total > 0 ? Math.round((correct / total) * 100) : 0;
   };
 
   const strongTopics = topics.filter(t => t.strengthStatus === 'strong');
@@ -232,12 +226,6 @@ const TopicCard = ({ topic, type }: TopicCardProps) => {
     strong: 'bg-success/10 border-success/20',
     moderate: 'bg-warning/10 border-warning/20',
     weak: 'bg-destructive/10 border-destructive/20',
-  };
-
-  const progressColors = {
-    strong: 'bg-success',
-    moderate: 'bg-warning',
-    weak: 'bg-destructive',
   };
 
   return (

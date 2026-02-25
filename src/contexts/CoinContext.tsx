@@ -25,7 +25,7 @@ const LOCAL_KEY = 'bb_coins_v1';
 const LOCAL_UNLOCK_KEY = 'bb_unlocked_games_v1';
 
 export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const [coins, setCoins] = useState<number>(0);
   const [unlockedGames, setUnlockedGames] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,17 +49,23 @@ export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           if (!error && data) {
             // Map available backend fields to local state where possible. If the project
             // later adds `coins`/`unlocked_games` revert this to the proper column names.
-            setCoins((data as any).coins ?? (data.total_xp ?? 0));
-            const unlocked = (data as any).unlocked_games ?? (data.unlocked_modes ?? []);
-            setUnlockedGames(Array.isArray(unlocked) ? unlocked : []);
+            const coins = ((data as Record<string, unknown>).coins as number) ?? (data.total_xp ?? 0);
+            const unlockedRaw = ((data as Record<string, unknown>).unlocked_games) ?? (data.unlocked_modes ?? []);
+            const unlocked = Array.isArray(unlockedRaw) ? (unlockedRaw as string[]) : [];
+            setCoins(coins);
+            setUnlockedGames(unlocked);
             // also mirror to localStorage for offline fallback
-            try { localStorage.setItem(LOCAL_KEY, String((data as any).coins ?? (data.total_xp ?? 0))); } catch {}
-            try { localStorage.setItem(LOCAL_UNLOCK_KEY, JSON.stringify(Array.isArray(unlocked) ? unlocked : [])); } catch {}
+            try { localStorage.setItem(LOCAL_KEY, String(coins)); } catch {
+              // Ignore localStorage errors
+            }
+            try { localStorage.setItem(LOCAL_UNLOCK_KEY, JSON.stringify(Array.isArray(unlocked) ? unlocked : [])); } catch {
+              // Ignore localStorage errors
+            }
             setLoading(false);
             return;
           }
-        } catch (err) {
-          console.error('Error loading coin profile:', err);
+        } catch (_err) {
+          console.error('Error loading coin profile:', _err);
         }
       }
 
@@ -69,7 +75,7 @@ export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const u = JSON.parse(localStorage.getItem(LOCAL_UNLOCK_KEY) || '[]');
         setCoins(Number.isFinite(c) ? c : 0);
         setUnlockedGames(Array.isArray(u) ? u : []);
-      } catch (err) {
+      } catch (_err) {
         setCoins(0);
         setUnlockedGames([]);
       }
@@ -81,15 +87,19 @@ export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const persist = async (newCoins: number, newUnlocked: string[]) => {
     // update localStorage
-    try { localStorage.setItem(LOCAL_KEY, String(newCoins)); } catch {}
-    try { localStorage.setItem(LOCAL_UNLOCK_KEY, JSON.stringify(newUnlocked)); } catch {}
+    try { localStorage.setItem(LOCAL_KEY, String(newCoins)); } catch {
+      // Ignore localStorage errors
+    }
+    try { localStorage.setItem(LOCAL_UNLOCK_KEY, JSON.stringify(newUnlocked)); } catch {
+      // Ignore localStorage errors
+    }
 
     if (user) {
       try {
         // Update columns that exist in the current schema. Older columns like
         // `coins`/`unlocked_games` may not exist and will cause 400 errors — map to
         // `total_xp`/`unlocked_modes` where possible to keep server in sync.
-        const payload: any = {
+        const payload: Record<string, unknown> = {
           total_xp: newCoins,
           unlocked_modes: newUnlocked,
         };
@@ -102,8 +112,8 @@ export const CoinProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (error) {
           console.error('Error updating coins in profile:', error);
         }
-      } catch (err) {
-        console.error('Error updating coins:', err);
+      } catch (_err) {
+        console.error('Error updating coins:', _err);
       }
     }
   };

@@ -249,7 +249,7 @@ Generate study notes now:
 /**
  * Build prompt for doubt solving
  */
-export const buildDoubtsPrompt = (doubt: string, subject: string, userPreferences: any): string => {
+export const buildDoubtsPrompt = (doubt: string, subject: string, userPreferences: Record<string, unknown>): string => {
   return `You are a friendly BrainBuddy AI tutor helping a student understand a concept.
 
 Student's Question: "${doubt}"

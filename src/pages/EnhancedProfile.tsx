@@ -3,7 +3,6 @@ import {
   Edit2,
   Save,
   LogOut,
-  Settings,
   TrendingUp,
   BookOpen,
   Brain,
@@ -69,7 +68,7 @@ const ProfilePage: React.FC = () => {
       setIsLoading(true);
 
       // Load from existing profiles table
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', user.id)
@@ -101,8 +100,8 @@ const ProfilePage: React.FC = () => {
         setProfile(defaultProfile);
         setFormData(defaultProfile);
       }
-    } catch (error) {
-      console.error('Error loading profile:', error);
+    } catch (_error) {
+      console.error('Error loading profile:', _error);
       // Create default profile on error
       const defaultProfile: UserProfile = {
         id: user?.id || '',
@@ -138,9 +137,9 @@ const ProfilePage: React.FC = () => {
       setProfile(formData);
       setIsEditing(false);
       toast.success('Profile updated successfully!');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to save profile');
+    } catch (_error) {
+      console.error('Error saving profile:', _error);
+      toast.error(_error instanceof Error ? _error.message : 'Failed to save profile');
     } finally {
       setIsSaving(false);
     }
@@ -224,8 +223,8 @@ const ProfilePage: React.FC = () => {
                     <label className="text-sm font-semibold block mb-2">Role</label>
                     <Select
                       value={formData.role}
-                      onValueChange={(value: any) =>
-                        setFormData({ ...formData, role: value })
+                      onValueChange={(value: string) =>
+                        setFormData({ ...formData, role: value as 'Student' | 'Teacher' | 'Admin' })
                       }
                     >
                       <SelectTrigger>
@@ -417,7 +416,7 @@ const ProfilePage: React.FC = () => {
                       key={style.value}
                       onClick={() =>
                         updateAIProfile({
-                          learningStyle: style.value as any,
+                          learningStyle: style.value as 'quick' | 'detailed' | 'exam-focused',
                         })
                       }
                       className={`p-3 rounded-lg border-2 transition-all ${
@@ -445,7 +444,7 @@ const ProfilePage: React.FC = () => {
                       key={level.value}
                       onClick={() =>
                         updateAIProfile({
-                          difficultyLevel: level.value as any,
+                          difficultyLevel: level.value as 'beginner' | 'intermediate' | 'advanced',
                         })
                       }
                       className={`p-3 rounded-lg border-2 transition-all ${

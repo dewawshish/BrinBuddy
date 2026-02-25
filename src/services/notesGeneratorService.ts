@@ -295,7 +295,7 @@ export const notesGeneratorService = {
   /**
    * Generate notes for multiple topics quickly
    */
-  async generateMultipleNotes(
+  generateMultipleNotes(
     topics: Array<{ subject: string; chapter: string; class?: string }>
   ): Promise<SubjectNotes[]> {
     return Promise.all(

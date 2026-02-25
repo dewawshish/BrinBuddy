@@ -105,11 +105,11 @@ const VideoPlayer = () => {
       if (subtasksError) {
         console.error('Error fetching subtasks:', subtasksError);
       } else if (subtasksData) {
-        const formattedSubtasks: Subtask[] = subtasksData.map((s: any) => ({
-          id: s.id,
-          title: s.title,
-          order_index: s.order_index,
-          videos: s.subtask_videos || [],
+        const formattedSubtasks: Subtask[] = subtasksData.map((s: Record<string, unknown>) => ({
+          id: s.id as string,
+          title: s.title as string,
+          order_index: s.order_index as number,
+          videos: (s.subtask_videos as SubtaskVideo[]) || [],
         }));
         setSubtasks(formattedSubtasks);
       }
@@ -243,12 +243,13 @@ const VideoPlayer = () => {
       setNotes(noteLines);
 
       toast.success('Notes generated successfully!');
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error generating notes:', error);
-      
-      if (error.message?.includes('429') || error.message?.includes('Rate limit')) {
+
+      const message = (error instanceof Error ? error.message : String(error)) || '';
+      if (message.includes('429') || message.includes('Rate limit')) {
         toast.error('Rate limit exceeded. Please try again later.');
-      } else if (error.message?.includes('402')) {
+      } else if (message.includes('402')) {
         toast.error('Please add credits to continue using AI features.');
       } else {
         toast.error('Failed to generate notes. Please try again.');

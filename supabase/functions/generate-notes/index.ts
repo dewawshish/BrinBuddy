@@ -1,4 +1,13 @@
+// Deno type declarations
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
+
+// @ts-expect-error - Deno module imports
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-expect-error - Deno module imports
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Allowed origins for CORS - prevents CSRF attacks
@@ -32,8 +41,8 @@ const FORBIDDEN_PATTERNS = [
   /forget\s+(all\s+)?previous/i,
   /system\s*:\s*/i,
   /\[\s*INST\s*\]/i,
-  /\<\s*\|\s*im_start\s*\|\s*\>/i,
-  /\<\s*\|\s*im_end\s*\|\s*\>/i,
+  /<\s*\|\s*im_start\s*\|\s*>/i,
+  /<\s*\|\s*im_end\s*\|\s*>/i,
   /\{\{\s*system/i,
   /pretend\s+you\s+are/i,
   /act\s+as\s+if/i,
@@ -63,6 +72,7 @@ function sanitizeInput(input: string, maxLength: number): { isValid: boolean; sa
   }
 
   sanitized = sanitized
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/[<>]/g, '')
     .replace(/\\/g, '')
@@ -184,7 +194,7 @@ async function callLovableAI(messages: { role: string; content: string }[]): Pro
   return data.choices?.[0]?.message?.content || "";
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     const corsHeaders = getCORSHeaders(req.headers.get('origin'));
     return new Response(null, { headers: corsHeaders });

@@ -10,8 +10,6 @@ import {
   LogOut,
   Menu,
   X,
-  Home,
-  Zap,
   FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -62,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({ open: controlledOpen, onOpenChange, i
 
   useEffect(() => {
     const handleResize = () => {
-      const newIsMobile = window.innerWidth < 768;
+      const newIsMobile = globalThis.innerWidth < 768;
       setIsMobile(newIsMobile);
       if (newIsMobile) {
         setCollapsed(true);
@@ -72,8 +70,8 @@ const Sidebar: React.FC<SidebarProps> = ({ open: controlledOpen, onOpenChange, i
     };
 
     handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    globalThis.addEventListener('resize', handleResize);
+    return () => globalThis.removeEventListener('resize', handleResize);
   }, [setCollapsed]);
 
   const handleLogout = async () => {

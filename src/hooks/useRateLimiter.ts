@@ -45,7 +45,7 @@ export const useRateLimiter = () => {
 
   // Credit consumption is now handled server-side in edge functions
   // This function just checks client-side rate limiting for UX
-  const canMakeRequest = useCallback(async (): Promise<boolean> => {
+  const canMakeRequest = useCallback((): boolean => {
     return checkRateLimit();
   }, [checkRateLimit]);
 

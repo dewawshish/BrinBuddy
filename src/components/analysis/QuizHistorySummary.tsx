@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   History,
   TrendingUp,
@@ -62,16 +61,16 @@ const QuizHistorySummary = () => {
 
       if (error) throw error;
 
-      const formattedResults: QuizResult[] = (data || []).map((r: any) => ({
-        id: r.id,
-        todoId: r.todo_id,
-        todoTitle: r.todos?.title || 'Unknown Quiz',
-        score: r.score,
-        previousScore: r.previous_score,
-        correctAnswers: r.correct_answers,
-        totalQuestions: r.total_questions,
-        timeTaken: r.time_taken_seconds || 0,
-        createdAt: r.created_at,
+      const formattedResults: QuizResult[] = (data || []).map((r: Record<string, unknown>) => ({
+        id: r.id as string,
+        todoId: r.todo_id as string,
+        todoTitle: (r.todos as Record<string, unknown>)?.title as string || 'Unknown Quiz',
+        score: r.score as number,
+        previousScore: r.previous_score as number | null,
+        correctAnswers: r.correct_answers as number,
+        totalQuestions: r.total_questions as number,
+        timeTaken: (r.time_taken_seconds as number) || 0,
+        createdAt: r.created_at as string,
       }));
 
       setRecentQuizzes(formattedResults);

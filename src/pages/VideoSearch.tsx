@@ -8,7 +8,7 @@ import { youtubeService, YouTubeVideo } from '@/services/youtubeService';
 import Sidebar from '@/components/Sidebar';
 
 // Simple debounce utility - pure function
-function createDebounce<T extends (...args: any[]) => any>(
+function createDebounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {

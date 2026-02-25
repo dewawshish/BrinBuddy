@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   BarChart3,
   TrendingUp,
-  TrendingDown,
   Target,
   Trophy,
   Clock,
   CheckCircle2,
-  XCircle,
   Brain,
   Zap,
   ArrowRight,
@@ -16,15 +14,11 @@ import {
   User,
   Loader2,
   Sparkles,
-  Star,
-  Award,
   BookOpen,
   Users,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Logo from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';

@@ -1,11 +1,17 @@
 /**
  * Lovable AI Gateway Helper
- * 
+ *
  * Uses the Lovable AI Gateway (https://ai.gateway.lovable.dev/v1/chat/completions)
  * with the pre-configured LOVABLE_API_KEY.
- * 
+ *
  * Default model: google/gemini-3-flash-preview
  */
+
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined;
+  };
+};
 
 const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
@@ -52,7 +58,6 @@ export async function callLovableAI(
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
     console.error("Lovable AI error:", response.status);
 
     if (response.status === 429) {

@@ -14,7 +14,7 @@ export interface AIMessage {
   timestamp: number;
 }
 
-export interface AINotesStructure {
+export interface AINotesStructure extends Record<string, unknown> {
   quickOverview: string;
   keyConcepts: string[];
   detailedExplanation: string;
@@ -72,7 +72,7 @@ export interface AIServiceConfig {
 
 export interface AIResponse {
   success: boolean;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
   error?: string;
   timestamp: number;
 }

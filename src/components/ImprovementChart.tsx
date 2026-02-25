@@ -50,12 +50,12 @@ const ImprovementChart = () => {
 
       if (perfError) throw perfError;
 
-      const formattedPerf: TopicPerformance[] = (perfData || []).map((p: any) => ({
-        topic_id: p.topic_id,
-        topic_name: p.topics?.name || 'Unknown Topic',
-        weakness_score: p.weakness_score,
-        strength_status: p.strength_status,
-        last_updated: p.last_updated,
+      const formattedPerf: TopicPerformance[] = (perfData || []).map((p: Record<string, unknown>) => ({
+        topic_id: p.topic_id as string,
+        topic_name: (p.topics as Record<string, unknown>)?.name as string || 'Unknown Topic',
+        weakness_score: p.weakness_score as number,
+        strength_status: p.strength_status as string,
+        last_updated: p.last_updated as string,
       }));
 
       setPerformances(formattedPerf);

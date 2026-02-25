@@ -8,14 +8,14 @@ import { useAuth } from '@/contexts/AuthContext';
 interface ShareContentDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onShare: (type: string, content: any) => void;
+  onShare: (type: string, content: unknown) => void;
 }
 
 const ShareContentDialog = ({ open, onOpenChange, onShare }: ShareContentDialogProps) => {
   const { user } = useAuth();
   const [tab, setTab] = useState<'quiz' | 'notes'>('quiz');
-  const [quizResults, setQuizResults] = useState<any[]>([]);
-  const [notes, setNotes] = useState<any[]>([]);
+  const [quizResults, setQuizResults] = useState<Record<string, unknown>[]>([]);
+  const [notes, setNotes] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -73,26 +73,33 @@ const ShareContentDialog = ({ open, onOpenChange, onShare }: ShareContentDialogP
             {quizResults.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No quiz results to share.</p>
             ) : (
-              quizResults.map((q) => (
-                <button
-                  key={q.id}
-                  onClick={() =>
-                    onShare('quiz_share', {
-                      score: q.score,
-                      correct: q.correct_answers,
-                      total: q.total_questions,
-                    })
-                  }
-                  className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Score: {q.score}%</span>
-                    <span className="text-xs text-muted-foreground">
-                      {q.correct_answers}/{q.total_questions} correct
-                    </span>
-                  </div>
-                </button>
-              ))
+              quizResults.map((q, idx) => {
+                const qData = q as Record<string, unknown>;
+                const id = String(qData.id || idx);
+                const score = qData.score as number;
+                const correctAnswers = qData.correct_answers as number;
+                const totalQuestions = qData.total_questions as number;
+                return (
+                  <button
+                    key={id}
+                    onClick={() =>
+                      onShare('quiz_share', {
+                        score,
+                        correct: correctAnswers,
+                        total: totalQuestions,
+                      })
+                    }
+                    className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Score: {score}%</span>
+                      <span className="text-xs text-muted-foreground">
+                        {correctAnswers}/{totalQuestions} correct
+                      </span>
+                    </div>
+                  </button>
+                );
+              })
             )}
           </div>
         ) : (
@@ -100,20 +107,26 @@ const ShareContentDialog = ({ open, onOpenChange, onShare }: ShareContentDialogP
             {notes.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">No notes to share.</p>
             ) : (
-              notes.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() =>
-                    onShare('notes_share', {
-                      title: n.content?.substring(0, 100) || 'Study Notes',
-                      noteId: n.id,
-                    })
-                  }
-                  className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                >
-                  <p className="text-sm line-clamp-2">{n.content?.substring(0, 100) || 'Study Notes'}</p>
-                </button>
-              ))
+              notes.map((n, idx) => {
+                const nData = n as Record<string, unknown>;
+                const id = String(nData.id || idx);
+                const content = String(nData.content || '');
+                const contentPreview = content.substring(0, 100) || 'Study Notes';
+                return (
+                  <button
+                    key={id}
+                    onClick={() =>
+                      onShare('notes_share', {
+                        title: contentPreview,
+                        noteId: id,
+                      })
+                    }
+                    className="w-full text-left p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                  >
+                    <p className="text-sm line-clamp-2">{contentPreview}</p>
+                  </button>
+                );
+              })
             )}
           </div>
         )}

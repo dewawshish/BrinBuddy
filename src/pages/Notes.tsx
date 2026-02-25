@@ -106,10 +106,10 @@ const Notes = () => {
 
       if (error) throw error;
 
-      const formattedTopics: WeakTopic[] = (data || []).map((t: any) => ({
-        topic_id: t.topic_id,
-        topic_name: t.topics?.name || 'Unknown',
-        weakness_score: t.weakness_score,
+      const formattedTopics: WeakTopic[] = (data || []).map((t: Record<string, unknown>) => ({
+        topic_id: t.topic_id as string,
+        topic_name: (t.topics as Record<string, unknown>)?.name as string || 'Unknown',
+        weakness_score: t.weakness_score as number,
       }));
 
       setWeakTopics(formattedTopics);
@@ -183,32 +183,6 @@ const Notes = () => {
       }
     }
     return null;
-  };
-
-  // Render text with weak topic highlighting
-  const renderHighlightedText = (text: string) => {
-    const weakTopic = containsWeakTopic(text);
-    
-    if (weakTopic) {
-      return (
-        <div className="relative">
-          <div className="absolute -left-3 top-0 bottom-0 w-1 bg-destructive rounded-full" />
-          <p className="border-l-2 border-transparent">{text}</p>
-          <button
-            onClick={() => {
-              setSelectedQuizTopic(weakTopic);
-              setMicroQuizOpen(true);
-            }}
-            className="inline-flex items-center gap-1 mt-2 text-xs text-destructive hover:underline"
-          >
-            <Brain className="h-3 w-3" />
-            Practice: {weakTopic.topic_name}
-          </button>
-        </div>
-      );
-    }
-
-    return <p>{text}</p>;
   };
 
   const handleDownload = () => {

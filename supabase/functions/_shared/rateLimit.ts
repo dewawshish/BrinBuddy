@@ -6,7 +6,20 @@
  */
 
 // Type definition for Supabase client
-type SupabaseClient = any;
+interface SupabaseQuery {
+  eq(column: string, value: unknown): SupabaseQuery;
+  gte(column: string, value: string): Promise<{ count: number | null; error: unknown }>;
+  insert(data: Record<string, unknown>): Promise<unknown>;
+}
+
+interface SupabaseTable {
+  select(columns: string, options?: { count: string; head: boolean }): SupabaseQuery;
+  insert(data: Record<string, unknown>): Promise<unknown>;
+}
+
+interface SupabaseClient {
+  from(table: string): SupabaseTable;
+}
 
 export interface RateLimitConfig {
   operation: string;
@@ -130,7 +143,7 @@ export async function logRateLimitRequest(
   userId: string,
   operation: string,
   success: boolean,
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 ): Promise<void> {
   try {
     await supabaseClient

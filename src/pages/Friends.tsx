@@ -20,7 +20,6 @@ const Friends = () => {
   const {
     friends,
     pendingRequests,
-    loading,
     sendFriendRequest,
     acceptRequest,
     rejectRequest,

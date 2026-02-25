@@ -65,16 +65,22 @@ class YouTubeService {
         return this.getMockVideos(query);
       }
 
-      return data.items.map(
-        (item: any): YouTubeVideo => ({
-          id: item.id.videoId || item.id,
-          title: item.snippet.title || 'Untitled Video',
-          description: item.snippet.description || '',
-          thumbnail: item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url || '',
-          channelTitle: item.snippet.channelTitle || 'Unknown Channel',
-          publishedAt: item.snippet.publishedAt || new Date().toISOString(),
-        })
-      );
+      return data.items.map((item: Record<string, unknown>): YouTubeVideo => {
+        const id = item.id as Record<string, unknown>;
+        const snippet = item.snippet as Record<string, unknown>;
+        const thumbnails = snippet?.thumbnails as Record<string, Record<string, unknown>>;
+        const mediumUrl = (thumbnails?.medium as Record<string, unknown>)?.url as string;
+        const defaultUrl = (thumbnails?.default as Record<string, unknown>)?.url as string;
+
+        return {
+          id: (id?.videoId as string) || (item.id as string),
+          title: (snippet?.title as string) || 'Untitled Video',
+          description: (snippet?.description as string) || '',
+          thumbnail: mediumUrl || defaultUrl || '',
+          channelTitle: (snippet?.channelTitle as string) || 'Unknown Channel',
+          publishedAt: (snippet?.publishedAt as string) || new Date().toISOString(),
+        };
+      });
     } catch (error) {
       console.error('Error searching YouTube:', error);
       return this.getMockVideos(query);
@@ -85,7 +91,6 @@ class YouTubeService {
    * Get mock videos for development/fallback
    */
   private getMockVideos(query: string): YouTubeVideo[] {
-    const topics = query.toLowerCase();
     const mockVideos: YouTubeVideo[] = [
       {
         id: 'dQw4w9WgXcQ',
@@ -156,7 +161,7 @@ class YouTubeService {
   /**
    * Search videos for a specific subject and chapter
    */
-  async searchEducationalVideos(subject: string, chapter: string): Promise<YouTubeVideo[]> {
+  searchEducationalVideos(subject: string, chapter: string): Promise<YouTubeVideo[]> {
     const query = `${subject} ${chapter} tutorial educational`;
     return this.searchVideos(query, 20);
   }
@@ -268,7 +273,7 @@ class YouTubeService {
   /**
    * Search videos (alias for searchVideos)
    */
-  async search(query: string, maxResults?: number): Promise<YouTubeVideo[]> {
+  search(query: string, maxResults?: number): Promise<YouTubeVideo[]> {
     return this.searchVideos(query, maxResults);
   }
 }

@@ -122,7 +122,7 @@ const BrainBuddyAIPanel: React.FC<BrainBuddyAIPanelProps> = ({
             <label className="text-xs font-semibold block mb-2">Learning Style</label>
             <Select
               value={aiProfile?.learningStyle || 'detailed'}
-              onValueChange={(value: any) =>
+              onValueChange={(value: string) =>
                 handleLearningStyleChange(value)
               }
             >
@@ -141,7 +141,7 @@ const BrainBuddyAIPanel: React.FC<BrainBuddyAIPanelProps> = ({
             <label className="text-xs font-semibold block mb-2">Difficulty Level</label>
             <Select
               value={aiProfile?.difficultyLevel || 'intermediate'}
-              onValueChange={(value: any) =>
+              onValueChange={(value: string) =>
                 handleDifficultyChange(value)
               }
             >
@@ -205,7 +205,7 @@ const BrainBuddyAIPanel: React.FC<BrainBuddyAIPanelProps> = ({
       {/* Input Area */}
       <div className="border-t border-border/50 p-3 space-y-2 flex-shrink-0 bg-background/50">
         <div className="grid grid-cols-2 gap-2 text-xs">
-          <Select value={messageType} onValueChange={(value: any) => setMessageType(value)}>
+          <Select value={messageType} onValueChange={(value: string) => setMessageType(value)}>
             <SelectTrigger className="text-xs h-8">
               <SelectValue />
             </SelectTrigger>

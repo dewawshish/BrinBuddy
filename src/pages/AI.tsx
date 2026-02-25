@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -6,7 +5,6 @@ import AIChallengePanel from '@/components/AIChallengePanel';
 
 const AIPage = () => {
   const navigate = useNavigate();
-  const [showFull, setShowFull] = useState(true);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-background/95 py-8">
@@ -22,11 +20,9 @@ const AIPage = () => {
         </Button>
 
         {/* Main AI Panel */}
-        {showFull && (
-          <div className="grid grid-cols-1 gap-6">
-            <AIChallengePanel isCompact={false} />
-          </div>
-        )}
+        <div className="grid grid-cols-1 gap-6">
+          <AIChallengePanel isCompact={false} />
+        </div>
       </div>
     </div>
   );

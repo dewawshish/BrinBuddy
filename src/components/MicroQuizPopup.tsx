@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle, XCircle, Sparkles, Brain, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface MicroQuizQuestion {
@@ -22,8 +21,7 @@ interface MicroQuizPopupProps {
   todoId: string;
 }
 
-const MicroQuizPopup = ({ isOpen, onClose, topicName, topicId, todoId }: MicroQuizPopupProps) => {
-  const { user } = useAuth();
+const MicroQuizPopup = ({ isOpen, onClose, topicName, topicId }: MicroQuizPopupProps) => {
   const [loading, setLoading] = useState(true);
   const [questions, setQuestions] = useState<MicroQuizQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -58,11 +56,11 @@ const MicroQuizPopup = ({ isOpen, onClose, topicName, topicId, todoId }: MicroQu
       if (error) throw error;
 
       if (data?.questions && data.questions.length > 0) {
-        setQuestions(data.questions.map((q: any) => ({
-          question: q.question,
-          options: q.options,
-          correctIndex: q.correctIndex,
-          explanation: q.explanation || 'Great job reviewing this concept!',
+        setQuestions(data.questions.map((q: Record<string, unknown>) => ({
+          question: q.question as string,
+          options: q.options as string[],
+          correctIndex: q.correctIndex as number,
+          explanation: (q.explanation as string) || 'Great job reviewing this concept!',
         })));
       }
     } catch (error) {

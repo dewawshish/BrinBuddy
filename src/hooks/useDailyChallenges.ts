@@ -40,7 +40,7 @@ export const useDailyChallenges = () => {
 
     try {
       // First, try to assign daily challenges (will return existing if already assigned)
-      const { data: assignedData, error: assignError } = await supabase
+      const { error: assignError } = await supabase
         .rpc('assign_daily_challenges', { p_user_id: user.id });
 
       if (assignError) {
@@ -62,8 +62,17 @@ export const useDailyChallenges = () => {
       if (fetchError) throw fetchError;
 
       // Transform the data to match our interface
-      const transformedChallenges = (userChallenges || []).map((uc: any) => ({
-        ...uc,
+      const transformedChallenges = (userChallenges || []).map((uc: Record<string, unknown>): UserDailyChallenge => ({
+        id: uc.id as string,
+        user_id: uc.user_id as string,
+        challenge_id: uc.challenge_id as string,
+        challenge_date: uc.challenge_date as string,
+        current_value: uc.current_value as number,
+        target_value: uc.target_value as number,
+        is_completed: uc.is_completed as boolean,
+        completed_at: (uc.completed_at as string) || null,
+        xp_earned: uc.xp_earned as number,
+        expires_at: uc.expires_at as string,
         challenge: uc.challenge as DailyChallenge,
       }));
 

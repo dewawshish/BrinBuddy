@@ -68,16 +68,18 @@ const StudyRecommendations = () => {
         .limit(3);
 
       // Add recommendations for weak topics
-      weakTopics?.forEach((topic: any) => {
+      weakTopics?.forEach((topic: Record<string, unknown>) => {
+        const topicData = (topic.topics as Record<string, unknown>) || {};
+        const topicName = String(topicData.name || 'Unknown');
         recs.push({
           id: `weak-${topic.topic_id}`,
           type: 'master_weak',
-          title: `Master: ${topic.topics?.name}`,
+          title: `Master: ${topicName}`,
           description: `Your weakness score is ${topic.weakness_score}. Focused practice can improve this significantly.`,
-          topicName: topic.topics?.name || 'Unknown',
+          topicName,
           priority: 'high',
           estimatedTime: '10-15 mins',
-          topicId: topic.topic_id,
+          topicId: String(topic.topic_id),
         });
       });
 
@@ -96,19 +98,23 @@ const StudyRecommendations = () => {
         .limit(5);
 
       // Find unwatched videos
-      recentTodos?.forEach((todo: any) => {
-        const progress = todo.video_progress?.[0]?.progress_percent || 0;
+      recentTodos?.forEach((todo: Record<string, unknown>) => {
+        const videoProgress = (todo.video_progress as unknown[]) || [];
+        const progress = (videoProgress[0] as Record<string, unknown>)?.progress_percent as number || 0;
+        const videoId = String(todo.video_id);
+        const todoId = String(todo.id);
+        const title = String(todo.title);
         if (progress < 80 && todo.video_id) {
           recs.push({
-            id: `video-${todo.id}`,
+            id: `video-${todoId}`,
             type: 'watch_video',
-            title: `Continue: ${todo.title}`,
+            title: `Continue: ${title}`,
             description: `You've watched ${progress}% of this video. Complete it to unlock the quiz!`,
-            topicName: todo.title,
+            topicName: title,
             priority: progress > 30 ? 'high' : 'medium',
             estimatedTime: '5-10 mins',
-            videoId: todo.video_id,
-            todoId: todo.id,
+            videoId,
+            todoId,
           });
         }
       });
@@ -128,21 +134,24 @@ const StudyRecommendations = () => {
         .order('last_updated', { ascending: true })
         .limit(2);
 
-      moderateTopics?.forEach((topic: any) => {
+      moderateTopics?.forEach((topic: Record<string, unknown>) => {
+        const lastUpdated = topic.last_updated as string | number | Date;
         const daysSinceUpdate = Math.floor(
-          (Date.now() - new Date(topic.last_updated).getTime()) / (1000 * 60 * 60 * 24)
+          (Date.now() - new Date(lastUpdated).getTime()) / (1000 * 60 * 60 * 24)
         );
-        
+        const topicData = (topic.topics as Record<string, unknown>) || {};
+        const topicName = String(topicData.name || 'Unknown');
+
         if (daysSinceUpdate > 3) {
           recs.push({
             id: `review-${topic.topic_id}`,
             type: 'review_topic',
-            title: `Review: ${topic.topics?.name}`,
+            title: `Review: ${topicName}`,
             description: `It's been ${daysSinceUpdate} days since you last practiced this. A quick review will help retention.`,
-            topicName: topic.topics?.name || 'Unknown',
+            topicName,
             priority: daysSinceUpdate > 7 ? 'high' : 'medium',
             estimatedTime: '5-10 mins',
-            topicId: topic.topic_id,
+            topicId: String(topic.topic_id),
           });
         }
       });

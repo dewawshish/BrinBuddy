@@ -8,7 +8,7 @@ export interface ChatMessage {
   receiverId: string;
   content: string | null;
   messageType: string;
-  sharedContent: any;
+  sharedContent: unknown;
   isRead: boolean;
   createdAt: string;
 }
@@ -81,21 +81,21 @@ export const useChat = (friendUserId: string | null) => {
           table: 'messages',
         },
         (payload) => {
-          const msg = payload.new as any;
+          const msg = payload.new as Record<string, unknown>;
           // Only add messages for this conversation
           if (
             (msg.sender_id === user.id && msg.receiver_id === friendUserId) ||
             (msg.sender_id === friendUserId && msg.receiver_id === user.id)
           ) {
             const newMsg: ChatMessage = {
-              id: msg.id,
-              senderId: msg.sender_id,
-              receiverId: msg.receiver_id,
-              content: msg.content,
-              messageType: msg.message_type,
+              id: String(msg.id),
+              senderId: String(msg.sender_id),
+              receiverId: String(msg.receiver_id),
+              content: (msg.content as string | null) || null,
+              messageType: String(msg.message_type),
               sharedContent: msg.shared_content,
-              isRead: msg.is_read,
-              createdAt: msg.created_at,
+              isRead: msg.is_read as boolean,
+              createdAt: String(msg.created_at),
             };
             setMessages(prev => [...prev, newMsg]);
 
@@ -119,16 +119,21 @@ export const useChat = (friendUserId: string | null) => {
     };
   }, [user, friendUserId, fetchMessages]);
 
-  const sendMessage = async (content: string, messageType = 'text', sharedContent: any = null) => {
+  const sendMessage = async (content: string, messageType = 'text', sharedContent: unknown = null) => {
     if (!user || !friendUserId || (!content.trim() && !sharedContent)) return;
     try {
-      const { error } = await supabase.from('messages').insert({
+      const messageData: Record<string, unknown> = {
         sender_id: user.id,
         receiver_id: friendUserId,
         content: content.trim() || null,
         message_type: messageType,
-        shared_content: sharedContent,
-      } as any);
+      };
+
+      if (sharedContent) {
+        messageData.shared_content = sharedContent;
+      }
+
+      const { error } = await supabase.from('messages').insert(messageData as never);
 
       if (error) throw error;
     } catch (error) {

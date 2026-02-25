@@ -68,7 +68,7 @@ const AIChallengePanel: React.FC<AIChallengePanelProps> = ({ onClose, isCompact 
         const assistantMessage: AIMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: result.data.response,
+          content: String(result.data.response),
           timestamp: Date.now(),
         };
         setMessages((prev) => [...prev, assistantMessage]);

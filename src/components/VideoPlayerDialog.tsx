@@ -1,6 +1,6 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, X } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import YouTube, { YouTubeProps } from 'react-youtube';
 
 interface VideoPlayerDialogProps {
@@ -45,7 +45,7 @@ const VideoPlayerDialog = ({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => window.open(`https://www.youtube.com/watch?v=${videoId}`, '_blank')}
+                onClick={() => globalThis.open?.(`https://www.youtube.com/watch?v=${videoId}`, '_blank')}
               >
                 <ExternalLink className="h-3 w-3 mr-1" />
                 Open in YouTube

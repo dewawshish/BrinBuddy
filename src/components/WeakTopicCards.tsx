@@ -171,12 +171,6 @@ const WeakTopicCards = () => {
     navigate('/fix-weak-areas');
   };
 
-  const getScoreColor = (score: number) => {
-    if (score >= 70) return 'text-destructive';
-    if (score >= 40) return 'text-warning';
-    return 'text-muted-foreground';
-  };
-
   const getAccuracyColor = (accuracy: number) => {
     if (accuracy >= 70) return 'text-success';
     if (accuracy >= 50) return 'text-warning';

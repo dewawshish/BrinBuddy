@@ -11,7 +11,6 @@ import {
   Sparkles,
   TrendingUp,
   Loader2,
-  Link as LinkIcon,
   Trash2,
   Search,
   User,
@@ -49,7 +48,7 @@ interface Todo {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, logout } = useAuth();
-  const { canMakeRequest, isRateLimited } = useRateLimiter();
+  const { canMakeRequest } = useRateLimiter();
   const { stats, useStreakProtection } = useUserStats();
   const [todos, setTodos] = useState<Todo[]>([]);
   const [newTodoTitle, setNewTodoTitle] = useState('');
@@ -109,7 +108,7 @@ const Dashboard = () => {
 
       let videoId: string | null = null;
       let videoDescription: string | null = null;
-      let subtasksData: any[] = [];
+      let subtasksData: Record<string, unknown>[] = [];
 
       try {
         const { data: videoData, error: videoError } = await supabase.functions.invoke('find-video', {
@@ -142,15 +141,15 @@ const Dashboard = () => {
       // Save subtasks and their videos to the database
       if (data && subtasksData.length > 0) {
         for (let i = 0; i < subtasksData.length; i++) {
-          const subtask = subtasksData[i];
-          
+          const subtask = subtasksData[i] as Record<string, unknown>;
+
           // Insert subtask
           const { data: subtaskRow, error: subtaskError } = await supabase
             .from('subtasks')
             .insert({
               todo_id: data.id,
               user_id: user.id,
-              title: subtask.title,
+              title: String(subtask.title),
               order_index: i,
             })
             .select()
@@ -162,15 +161,16 @@ const Dashboard = () => {
           }
 
           // Insert videos for this subtask
-          if (subtaskRow && subtask.videos?.length > 0) {
-            const videosToInsert = subtask.videos.map((video: any, idx: number) => ({
+          const videos = (subtask.videos as unknown[]) || [];
+          if (subtaskRow && Array.isArray(videos) && videos.length > 0) {
+            const videosToInsert = videos.map((video: Record<string, unknown>, idx: number) => ({
               subtask_id: subtaskRow.id,
               user_id: user.id,
-              video_id: video.videoId,
-              title: video.title,
-              channel: video.channel,
-              engagement_score: video.engagementScore,
-              reason: video.reason,
+              video_id: String(video.videoId),
+              title: String(video.title),
+              channel: String(video.channel),
+              engagement_score: typeof video.engagementScore === 'number' ? video.engagementScore : 0,
+              reason: String(video.reason),
               order_index: idx,
             }));
 
