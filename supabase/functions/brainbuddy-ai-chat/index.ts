@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // @ts-expect-error - Deno global
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";  // endpoint remains the same
 
 interface ChatRequest {
   message: string;
@@ -19,14 +19,14 @@ interface ChatRequest {
 }
 
 async function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY is not configured");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  const response = await fetch(LOVABLE_AI_GATEWAY, {
+  const response = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
