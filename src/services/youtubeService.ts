@@ -26,11 +26,41 @@ export interface YouTubeWindow {
   isMinimized: boolean;
 }
 
-const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || 'AIzaSyDJouqzFgkHPtva3-ehBHtXmGzpSebouUE';
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY || 'AIzaSyBthJ9qAFoM8fIMcVMlWBj2qEH0_3Ac9jU';
 const YOUTUBE_API_BASE = 'https://www.googleapis.com/youtube/v3';
 
 class YouTubeService {
   private openWindows: Map<string, YouTubeWindow> = new Map();
+
+  /**
+   * Calculate quality score based on views, likes, and engagement rate
+   */
+  private calculateQualityScore(video: YouTubeVideo): number {
+    const viewCount = video.viewCount || 0;
+    const likeCount = video.likeCount || 0;
+    const engagementRate = viewCount > 0 ? (likeCount / viewCount) * 100 : 0;
+
+    // Publish date recency score (weighted)
+    const publishDate = new Date(video.publishedAt).getTime();
+    const daysSincePublish = Math.max(1, (Date.now() - publishDate) / (1000 * 60 * 60 * 24));
+    const recencyScore = Math.max(0, 100 - Math.log10(daysSincePublish + 1) * 20);
+
+    // View count score (normalized)
+    const viewScore = Math.min(100, Math.log10(Math.max(1, viewCount)) * 15);
+
+    // Engagement score (likes/views ratio) - most important for quality
+    const engagementScore = Math.min(100, engagementRate * 20);
+
+    // Combined weighted score
+    // Engagement (40%) + Views (30%) + Recency (20%) + Like count bonus (10%)
+    const baseScore =
+      engagementScore * 0.4 +
+      viewScore * 0.3 +
+      recencyScore * 0.2 +
+      Math.min(20, likeCount / 1000) * 0.1;
+
+    return Math.round(baseScore);
+  }
 
   /**
    * Search for educational videos on YouTube
@@ -45,7 +75,7 @@ class YouTubeService {
       const searchUrl = new URL(`${YOUTUBE_API_BASE}/search`);
       searchUrl.searchParams.set('q', query);
       searchUrl.searchParams.set('key', YOUTUBE_API_KEY);
-      searchUrl.searchParams.set('maxResults', maxResults.toString());
+      searchUrl.searchParams.set('maxResults', (maxResults * 2).toString()); // Get more results to filter better
       searchUrl.searchParams.set('type', 'video');
       searchUrl.searchParams.set('part', 'snippet');
       searchUrl.searchParams.set('order', 'relevance');
@@ -65,22 +95,73 @@ class YouTubeService {
         return this.getMockVideos(query);
       }
 
-      return data.items.map((item: Record<string, unknown>): YouTubeVideo => {
-        const id = item.id as Record<string, unknown>;
-        const snippet = item.snippet as Record<string, unknown>;
-        const thumbnails = snippet?.thumbnails as Record<string, Record<string, unknown>>;
-        const mediumUrl = (thumbnails?.medium as Record<string, unknown>)?.url as string;
-        const defaultUrl = (thumbnails?.default as Record<string, unknown>)?.url as string;
+      // Get video IDs for fetching statistics
+      const videoIds = data.items
+        .map((item: Record<string, unknown>) => {
+          const id = item.id as Record<string, unknown>;
+          return (id?.videoId as string);
+        })
+        .filter(Boolean)
+        .join(',');
 
-        return {
-          id: (id?.videoId as string) || (item.id as string),
-          title: (snippet?.title as string) || 'Untitled Video',
-          description: (snippet?.description as string) || '',
-          thumbnail: mediumUrl || defaultUrl || '',
-          channelTitle: (snippet?.channelTitle as string) || 'Unknown Channel',
-          publishedAt: (snippet?.publishedAt as string) || new Date().toISOString(),
-        };
+      if (!videoIds) {
+        return this.getMockVideos(query);
+      }
+
+      // Fetch video statistics (views, likes, duration)
+      const statsUrl = new URL(`${YOUTUBE_API_BASE}/videos`);
+      statsUrl.searchParams.set('id', videoIds);
+      statsUrl.searchParams.set('key', YOUTUBE_API_KEY);
+      statsUrl.searchParams.set('part', 'statistics,contentDetails');
+
+      const statsResponse = await fetch(statsUrl.toString());
+      if (!statsResponse.ok) {
+        console.warn('Could not fetch video statistics, using basic search results');
+      }
+
+      const statsData = statsResponse.ok ? await statsResponse.json() : { items: [] };
+      const statsMap = new Map<string, { viewCount: number; likeCount: number; duration: string }>();
+
+      statsData.items?.forEach((stat: Record<string, unknown>) => {
+        const statistics = stat.statistics as Record<string, unknown>;
+        const contentDetails = stat.contentDetails as Record<string, unknown>;
+        statsMap.set(stat.id as string, {
+          viewCount: parseInt((statistics?.viewCount as string) || '0'),
+          likeCount: parseInt((statistics?.likeCount as string) || '0'),
+          duration: (contentDetails?.duration as string) || 'PT0S',
+        });
       });
+
+      // Build video list with statistics
+      const videos = data.items
+        .map((item: Record<string, unknown>): YouTubeVideo | null => {
+          const id = item.id as Record<string, unknown>;
+          const snippet = item.snippet as Record<string, unknown>;
+          const thumbnails = snippet?.thumbnails as Record<string, Record<string, unknown>>;
+          const mediumUrl = (thumbnails?.medium as Record<string, unknown>)?.url as string;
+          const defaultUrl = (thumbnails?.default as Record<string, unknown>)?.url as string;
+          const videoId = (id?.videoId as string) || (item.id as string);
+
+          const stats = statsMap.get(videoId);
+
+          return {
+            id: videoId,
+            title: (snippet?.title as string) || 'Untitled Video',
+            description: (snippet?.description as string) || '',
+            thumbnail: mediumUrl || defaultUrl || '',
+            channelTitle: (snippet?.channelTitle as string) || 'Unknown Channel',
+            publishedAt: (snippet?.publishedAt as string) || new Date().toISOString(),
+            duration: stats?.duration || 'PT0S',
+            viewCount: stats?.viewCount,
+            likeCount: stats?.likeCount,
+          };
+        })
+        .filter((v): v is YouTubeVideo => v !== null);
+
+      // Sort by quality score
+      videos.sort((a, b) => this.calculateQualityScore(b) - this.calculateQualityScore(a));
+
+      return videos.slice(0, maxResults);
     } catch (error) {
       console.error('Error searching YouTube:', error);
       return this.getMockVideos(query);

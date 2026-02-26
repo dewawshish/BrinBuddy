@@ -50,6 +50,37 @@ npm run dev
 - Click on "New codespace" to launch a new Codespace environment.
 - Edit files directly within the Codespace and commit and push your changes once you're done.
 
+## Environment variables & secrets
+
+This repo uses several API keys for client and server functionality. Keep them secret, and **never commit your real keys to git**. For local development, copy `.env.example` to `.env` and fill in the values:
+
+```dotenv
+# client-side (prefixed with VITE_)
+VITE_SUPABASE_PROJECT_ID="..."
+VITE_SUPABASE_PUBLISHABLE_KEY="..."
+VITE_SUPABASE_URL="..."
+VITE_YOUTUBE_API_KEY="..."
+VITE_LOVABLE_API_KEY="..."
+
+# server-side (functions read unprefixed variables)
+GEMINI_API_KEY="..."
+YOUTUBE_API_KEY="..."
+```
+
+### Setting Supabase function secrets
+
+The serverless functions (under `supabase/functions`) also require these values. In production you should set them via the Supabase dashboard or CLI:
+
+```bash
+# using the CLI
+supabase secrets set GEMINI_API_KEY
+supabase secrets set YOUTUBE_API_KEY
+supabase secrets set LOVABLE_API_KEY
+# repeat for any additional keys
+```
+
+The CLI will prompt you to paste each key value and securely store it. Once set, redeploy your functions with `supabase functions deploy find-video` (replace with specific function name).
+
 ## What technologies are used for this project?
 
 This project is built with:

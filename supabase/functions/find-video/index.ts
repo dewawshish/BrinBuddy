@@ -90,6 +90,9 @@ interface YouTubeVideo {
   durationFormatted: string;
   thumbnail: string;
   engagementScore: number;
+  likeCount?: number;
+  viewCountNum?: number;
+  engagementRate?: number;
 }
 
 function formatDuration(isoDuration: string): string {
@@ -106,10 +109,57 @@ function formatDuration(isoDuration: string): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+/**
+ * Calculate advanced quality score based on content quality metrics
+ * - Engagement Rate (40%): likes/views ratio - indicates content quality
+ * - View Count (25%): total reach and popularity
+ * - Recency (20%): recent content tends to be better updated
+ * - Like Count (15%): absolute engagement quantity
+ */
+function calculateAdvancedEngagementScore(
+  viewCount: number,
+  likeCount: number,
+  publishedAt: string
+): { score: number; engagementRate: number } {
+  // Calculate engagement rate (likes per 1000 views)
+  const engagementRate = viewCount > 0 ? (likeCount / viewCount) * 100 : 0;
+
+  // Publish date recency score
+  const publishDate = new Date(publishedAt).getTime();
+  const daysSincePublish = Math.max(1, (Date.now() - publishDate) / (1000 * 60 * 60 * 24));
+  const recencyScore = Math.max(0, 100 - Math.log10(daysSincePublish + 1) * 20);
+
+  // View count score (logarithmic normalization)
+  const viewScore = Math.min(100, Math.log10(Math.max(1, viewCount)) * 15);
+
+  // Engagement rate score (likes per view percentage)
+  const engagementRateScore = Math.min(100, engagementRate * 20);
+
+  // Like count bonus (reward absolute engagement)
+  const likeCountScore = Math.min(100, (likeCount / 100) * 5);
+
+  // Weighted composite score
+  // Engagement Rate (40% - most important for quality)
+  // View Count (25% - popularity indicator)
+  // Recency (20% - freshness)
+  // Like Count Bonus (15% - engagement quantity)
+  const compositeScore = Math.round(
+    engagementRateScore * 0.4 +
+    viewScore * 0.25 +
+    recencyScore * 0.2 +
+    likeCountScore * 0.15
+  );
+
+  return {
+    score: Math.min(100, Math.max(1, compositeScore)),
+    engagementRate: Math.round(engagementRate * 100) / 100,
+  };
+}
+
 async function searchYouTube(query: string, apiKey: string, maxResults: number = 10): Promise<YouTubeVideo[]> {
   console.log(`Searching YouTube for: "${query}"`);
   
-  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=medium&videoEmbeddable=true&maxResults=${maxResults}&key=${apiKey}`;
+  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=medium&videoEmbeddable=true&order=relevance&maxResults=${maxResults * 2}&key=${apiKey}`;
   
   const searchResponse = await fetch(searchUrl);
   if (!searchResponse.ok) {
@@ -155,16 +205,16 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
     const viewCount = parseInt(item.statistics?.viewCount || '0');
     const likeCount = parseInt(item.statistics?.likeCount || '0');
     
-    const publishDate = new Date(item.snippet.publishedAt);
-    const daysSincePublish = Math.max(1, (Date.now() - publishDate.getTime()) / (1000 * 60 * 60 * 24));
-    const engagementScore = Math.round(
-      (viewCount / daysSincePublish * 0.5) + 
-      (likeCount * 10) + 
-      (viewCount > 100000 ? 50 : 0)
+    const { score: engagementScore, engagementRate } = calculateAdvancedEngagementScore(
+      viewCount,
+      likeCount,
+      item.snippet.publishedAt
     );
     
     const thumbnails = item.snippet.thumbnails;
     const thumbnail = thumbnails?.medium?.url || thumbnails?.default?.url || '';
+    
+    console.log(`Video: ${item.snippet.title} | Views: ${viewCount} | Likes: ${likeCount} | Engagement Rate: ${engagementRate}% | Score: ${engagementScore}`);
     
     return {
       videoId: item.id,
@@ -175,11 +225,17 @@ async function searchYouTube(query: string, apiKey: string, maxResults: number =
       duration: item.contentDetails?.duration || "PT0S",
       durationFormatted: formatDuration(item.contentDetails?.duration || "PT0S"),
       thumbnail,
-      engagementScore: Math.min(100, Math.max(1, engagementScore / 1000)),
+      engagementScore,
+      likeCount,
+      viewCountNum: viewCount,
+      engagementRate,
     };
   }) || [];
   
-  return videos.sort((a, b) => b.engagementScore - a.engagementScore);
+  // Sort by advanced engagement score
+  videos.sort((a, b) => b.engagementScore - a.engagementScore);
+  
+  return videos.slice(0, maxResults);
 }
 
 function formatViewCount(count: number): string {
@@ -195,14 +251,61 @@ function formatViewCount(count: number): string {
 // Lovable AI Gateway call
 const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
+// Optional Gemini (Google) API key - prefer this for direct Gemini calls when present
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+
+async function callGeminiAI(messages: { role: string; content: string }[], model = "google/gemini-3-flash-preview"): Promise<string> {
+  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
+
+  const url = `https://generativeai.googleapis.com/v1/models/${encodeURIComponent(model)}:generateMessage?key=${encodeURIComponent(
+    GEMINI_API_KEY
+  )}`;
+
+  const payload = {
+    messages: messages.map((m) => ({ author: m.role === 'assistant' ? 'assistant' : m.role, content: [{ type: 'text', text: m.content }] })),
+    temperature: 0.2,
+    maxOutputTokens: 800,
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const txt = await res.text();
+    throw new Error(`Gemini API error: ${res.status} ${txt}`);
+  }
+
+  const data = await res.json();
+
+  // Try common response shapes
+  if (data?.candidates && data.candidates.length > 0 && data.candidates[0].content) {
+    return data.candidates[0].content.map((c: any) => c.text || '').join('');
+  }
+  if (data?.output) {
+    return JSON.stringify(data.output);
+  }
+  return JSON.stringify(data);
+}
+
 async function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
+  // Prefer direct Gemini when API key is provided
+  if (GEMINI_API_KEY) {
+    try {
+      return await callGeminiAI(messages);
+    } catch (err) {
+      console.warn('Direct Gemini call failed, falling back to Lovable gateway:', err);
+    }
+  }
+
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
     throw new Error("LOVABLE_API_KEY is not configured");
   }
 
   console.log("Calling Lovable AI (gemini-3-flash-preview) for video discovery...");
-  
   const response = await fetch(LOVABLE_AI_GATEWAY, {
     method: "POST",
     headers: {
@@ -219,7 +322,6 @@ async function callLovableAI(messages: { role: string; content: string }[]): Pro
 
   if (!response.ok) {
     console.error("Lovable AI error:", response.status);
-    
     if (response.status === 429) {
       throw new Error("Rate limit exceeded. Please try again later.");
     }
@@ -382,13 +484,34 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
 
     console.log(`Found ${mainVideos.length} main videos and ${subtasksWithVideos.length} subtasks`);
 
+    // Format main video with quality metrics
+    const mainVideoQuality = {
+      videoId: primaryVideo.videoId,
+      title: primaryVideo.title,
+      channel: primaryVideo.channel,
+      views: primaryVideo.viewCount,
+      engagement: primaryVideo.engagementRate ? `${primaryVideo.engagementRate}%` : 'N/A',
+      quality: primaryVideo.engagementScore,
+      reason: `Best educational video for "${sanitizedTopic}" - ${primaryVideo.viewCount} views, ${primaryVideo.engagementRate ? primaryVideo.engagementRate + '% engagement rate' : 'excellent quality'}`
+    };
+
     return new Response(
       JSON.stringify({
-        videoId: primaryVideo.videoId,
-        title: primaryVideo.title,
-        channel: primaryVideo.channel,
-        reason: `Best educational video for "${sanitizedTopic}" with ${primaryVideo.viewCount} views`,
-        subtasks: subtasksWithVideos,
+        ...mainVideoQuality,
+        subtasks: subtasksWithVideos.map(subtask => ({
+          ...subtask,
+          videos: subtask.videos.map((v, i) => ({
+            videoId: v.videoId,
+            title: v.title,
+            channel: v.channel,
+            views: v.views,
+            engagement: (v as { engagement?: string }).engagement || `${(v as { engagementRate?: number }).engagementRate}%` || 'N/A',
+            quality: v.engagementScore,
+            duration: v.duration,
+            thumbnail: v.thumbnail,
+            reason: i === 0 ? `Highest quality video for this topic (Score: ${v.engagementScore}/100)` : `Recommended video #${i + 1}`
+          }))
+        }))
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
