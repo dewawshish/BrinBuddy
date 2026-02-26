@@ -1,8 +1,8 @@
 /**
- * Lovable AI Gateway Helper
+ * AI Gateway Helper
  *
  * Uses the Lovable AI Gateway (https://ai.gateway.lovable.dev/v1/chat/completions)
- * with the pre-configured LOVABLE_API_KEY.
+ * and accepts either GEMINI_API_KEY or LOVABLE_API_KEY for backwards compatibility.
  *
  * Default model: google/gemini-3-flash-preview
  */
@@ -13,7 +13,7 @@ declare const Deno: {
   };
 };
 
-const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 export interface LovableAIMessage {
   role: "system" | "user" | "assistant";
@@ -30,9 +30,9 @@ export async function callLovableAI(
   messages: LovableAIMessage[],
   options: LovableAIOptions = {}
 ): Promise<string> {
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY is not configured");
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
   }
 
   const {
@@ -41,12 +41,12 @@ export async function callLovableAI(
     max_tokens = 2000,
   } = options;
 
-  console.log(`Calling Lovable AI (${model})...`);
+  console.log(`Calling Gemini AI (${model})...`);
 
-  const response = await fetch(LOVABLE_AI_GATEWAY, {
+  const response = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -55,7 +55,6 @@ export async function callLovableAI(
       temperature,
       max_tokens,
     }),
-  });
 
   if (!response.ok) {
     console.error("Lovable AI error:", response.status);
