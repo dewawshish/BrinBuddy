@@ -22,9 +22,12 @@ export const useStreakFreeze = () => {
         .from('profiles')
         .select('streak_protections')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching profile for streak protections:', error);
+        return 0;
+      }
       setStreakProtections(profile?.streak_protections || 0);
       return profile?.streak_protections || 0;
     } catch (error) {

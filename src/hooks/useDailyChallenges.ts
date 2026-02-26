@@ -40,11 +40,17 @@ export const useDailyChallenges = () => {
 
     try {
       // First, try to assign daily challenges (will return existing if already assigned)
+      // try to assign daily challenges; if the function doesn't exist just log and continue
       const { error: assignError } = await supabase
         .rpc('assign_daily_challenges', { p_user_id: user.id });
 
       if (assignError) {
-        console.error('Error assigning challenges:', assignError);
+        // ignore missing function; log other issues
+        if (assignError.code === 'PGRST404') {
+          console.warn('assign_daily_challenges RPC not found (skipping)');
+        } else {
+          console.error('Error assigning challenges:', assignError);
+        }
       }
 
       // Fetch user's daily challenges with challenge details
@@ -59,7 +65,10 @@ export const useDailyChallenges = () => {
         .eq('challenge_date', today)
         .order('is_completed', { ascending: true });
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Failed to fetch user challenges:', fetchError);
+        throw fetchError;
+      }
 
       // Transform the data to match our interface
       const transformedChallenges = (userChallenges || []).map((uc: Record<string, unknown>): UserDailyChallenge => ({
