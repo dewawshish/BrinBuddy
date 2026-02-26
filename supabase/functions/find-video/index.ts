@@ -248,9 +248,6 @@ function formatViewCount(count: number): string {
   return count.toString();
 }
 
-// Lovable AI Gateway call
-const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-
 // Optional Gemini (Google) API key - prefer this for direct Gemini calls when present
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
@@ -290,52 +287,10 @@ async function callGeminiAI(messages: { role: string; content: string }[], model
   return JSON.stringify(data);
 }
 
+// wrapper maintained for backwards compatibility
 async function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
-  // Prefer direct Gemini when API key is provided
-  if (GEMINI_API_KEY) {
-    try {
-      return await callGeminiAI(messages);
-    } catch (err) {
-      console.warn('Direct Gemini call failed, falling back to Lovable gateway:', err);
-    }
-  }
-
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY is not configured");
-  }
-
-  console.log("Calling Lovable AI (gemini-3-flash-preview) for video discovery...");
-  const response = await fetch(LOVABLE_AI_GATEWAY, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
-      messages,
-      temperature: 0.7,
-      max_tokens: 2000,
-    }),
-  });
-
-  if (!response.ok) {
-    console.error("Lovable AI error:", response.status);
-    if (response.status === 429) {
-      throw new Error("Rate limit exceeded. Please try again later.");
-    }
-    if (response.status === 402) {
-      throw new Error("Payment required. Please add funds to your Lovable AI workspace.");
-    }
-    if (response.status === 401) {
-      throw new Error("Invalid API key or authentication failed.");
-    }
-    throw new Error(`AI gateway error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || "";
+  // simply delegate to the direct Gemini call
+  return callGeminiAI(messages);
 }
 
 serve(async (req: Request) => {
@@ -460,7 +415,7 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
           return {
             title: subtask.title || `Part ${idx + 1}`,
             description: subtask.searchQuery || '',
-            videos: videos.map((v, i) => ({
+            videos: videos.map((v: any, i: number) => ({
               videoId: v.videoId,
               title: v.title,
               channel: v.channel,
@@ -500,7 +455,7 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
         ...mainVideoQuality,
         subtasks: subtasksWithVideos.map(subtask => ({
           ...subtask,
-          videos: subtask.videos.map((v, i) => ({
+          videos: subtask.videos.map((v: any, i: number) => ({
             videoId: v.videoId,
             title: v.title,
             channel: v.channel,
