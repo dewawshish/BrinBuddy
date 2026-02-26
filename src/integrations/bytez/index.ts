@@ -121,18 +121,10 @@ export async function findVideoWithBytez(
 
     const videos = data?.videos || [];
     
-    // Additional client-side validation to ensure no shorts
-    const validVideos = videos.filter((video: Record<string, unknown>) => {
-      return video.duration && (video.duration as number) >= 10;
-    });
-
-    if (validVideos.length === 0 && videos.length > 0) {
-      return {
-        error: 'No suitable educational videos found matching your criteria. Please try a different search.',
-      };
-    }
-
-    return { videos: validVideos };
+    // Previously we filtered out videos shorter than 10 minutes on the client,
+    // but this often removed valid educational content.  Return whatever the
+    // edge function provided so the UI can decide how to handle short videos.
+    return { videos };
   } catch (err) {
     console.error('Video search error:', err);
     return { error: err instanceof Error ? err.message : 'Unknown error occurred' };

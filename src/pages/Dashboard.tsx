@@ -115,13 +115,23 @@ const Dashboard = () => {
           body: { topic: newTodoTitle.trim() },
         });
 
-        if (!videoError && videoData && !videoData.error) {
+        if (videoError) {
+          console.error('Edge function error:', videoError);
+          toast.error('Video search failed: ' + (videoError.message || 'Unknown error'));
+        } else if (videoData?.error) {
+          console.error('Video search error response:', videoData.error);
+          toast.error('Video search error: ' + videoData.error);
+        } else if (videoData) {
           videoId = videoData.videoId;
           videoDescription = `${videoData.title} by ${videoData.channel} - ${videoData.reason}`;
           subtasksData = videoData.subtasks || [];
+          if (!videoId) {
+            toast.error('AI returned video info but no video ID was provided');
+          }
         }
       } catch (aiError) {
         console.error('AI video search failed:', aiError);
+        toast.error('Video search encountered an exception');
         // Continue without video if AI fails
       }
 
