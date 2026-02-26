@@ -1,4 +1,4 @@
-# Welcome to your Lovable project
+# Welcome to your Gemini/Lovable project
 
 ## Project info
 
@@ -8,7 +8,7 @@
 
 There are several ways of editing your application.
 
-**Use Lovable**
+**Use Gemini-powered AI**
 
 Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
 
@@ -60,7 +60,7 @@ VITE_SUPABASE_PROJECT_ID="..."
 VITE_SUPABASE_PUBLISHABLE_KEY="..."
 VITE_SUPABASE_URL="..."
 VITE_YOUTUBE_API_KEY="..."
-VITE_LOVABLE_API_KEY="..."
+VITE_LOVABLOE_API_KEY="..."
 
 # server-side (functions read unprefixed variables)
 GEMINI_API_KEY="..."
@@ -75,7 +75,7 @@ The serverless functions (under `supabase/functions`) also require these values.
 # using the CLI
 supabase secrets set GEMINI_API_KEY
 supabase secrets set YOUTUBE_API_KEY
-supabase secrets set LOVABLE_API_KEY
+supabase secrets set GEMINI_API_KEY
 # repeat for any additional keys
 ```
 

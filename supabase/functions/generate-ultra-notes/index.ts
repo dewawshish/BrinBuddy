@@ -7,8 +7,8 @@ const corsHeaders = {
 };
 
 // @ts-expect-error - Deno global
-const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-const LOVABLE_AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions"; // still using Lovable's gateway for gemini requests
 
 interface NotesRequest {
   prompt: string;
@@ -17,15 +17,15 @@ interface NotesRequest {
   classLevel: string;
 }
 
-async function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY is not configured");
+async function callGeminiAI(messages: { role: string; content: string }[]): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  const response = await fetch(LOVABLE_AI_GATEWAY, {
+  const response = await fetch(AI_GATEWAY, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      Authorization: `Bearer ${GEMINI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -37,7 +37,7 @@ async function callLovableAI(messages: { role: string; content: string }[]): Pro
   });
 
   if (!response.ok) {
-    console.error("Lovable AI error:", response.status);
+    console.error("AI gateway error:", response.status);
     if (response.status === 429) {
       throw new Error("Rate limit exceeded. Please try again later.");
     }
@@ -98,7 +98,7 @@ Always respond with ONLY valid JSON in this exact format, no markdown:
       },
     ];
 
-    const response = await callLovableAI(messages);
+    const response = await callGeminiAI(messages);
 
     // Try to parse and clean the JSON response
     let notes = response;
