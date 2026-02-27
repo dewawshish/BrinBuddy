@@ -21,7 +21,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
-  const captchaRef = useRef<HCaptcha>(null);
+  const captchaRef = useRef<any>(null);
   const navigate = useNavigate();
   const { login, signup, loginWithGoogle, user } = useAuth();
 
