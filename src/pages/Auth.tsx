@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import Logo from '@/components/Logo';
+import Turnstile from '@/components/Turnstile';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -19,6 +20,7 @@ const Auth = () => {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
   const navigate = useNavigate();
   const { login, signup, loginWithGoogle, user } = useAuth();
 
@@ -91,7 +93,12 @@ const Auth = () => {
           setIsLoading(false);
           return;
         }
-        const { error } = await signup(email, password, name, username.trim());
+        if (!turnstileToken) {
+          toast.error('Please complete the captcha');
+          setIsLoading(false);
+          return;
+        }
+        const { error } = await signup(email, password, name, username.trim(), turnstileToken);
         if (error) {
           if (error.includes('profiles_name_unique') || error.includes('duplicate key')) {
             toast.error('This username is already taken. Please choose another.');
@@ -228,6 +235,16 @@ const Auth = () => {
                 </div>
                 {username.trim() && isUsernameAvailable === false && (
                   <p className="text-xs text-destructive -mt-2">This username is already taken</p>
+                )}
+
+                {/* cloudflare turnstile captcha for new signups */}
+                {!isLogin && (
+                  <div className="mt-4">
+                    <Turnstile
+                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
+                      onVerify={(token) => setTurnstileToken(token)}
+                    />
+                  </div>
                 )}
               </>
             )}
