@@ -107,12 +107,23 @@ export async function findVideoWithBytez(
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('find-video', {
+    // Forward the current user's access token to the Edge Function so it can
+    // validate the request server-side and avoid 401 Unauthorized responses.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+
+    const invokePayload: any = {
       body: {
         topic,
-        filters
-      }
-    });
+        filters,
+      },
+    };
+
+    if (accessToken) {
+      invokePayload.headers = { Authorization: `Bearer ${accessToken}` };
+    }
+
+    const { data, error } = await supabase.functions.invoke('find-video', invokePayload);
 
     if (error) {
       console.error('Edge function error:', error);

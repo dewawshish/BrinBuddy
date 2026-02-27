@@ -20,7 +20,15 @@ const ALLOWED_ORIGINS = [
 ];
 
 function getCORSHeaders(originHeader: string | null): Record<string, string> {
-  const allowedOrigin = (originHeader && ALLOWED_ORIGINS.includes(originHeader))
+  // Allow explicit origins from the whitelist, and allow common dev origins
+  // such as localhost and GitHub Codespaces (app.github.dev) for development.
+  const isDevAllowed = originHeader && (
+    originHeader.startsWith('http://localhost') ||
+    originHeader.startsWith('https://localhost') ||
+    originHeader.endsWith('.app.github.dev')
+  );
+
+  const allowedOrigin = (originHeader && (ALLOWED_ORIGINS.includes(originHeader) || isDevAllowed))
     ? originHeader
     : ALLOWED_ORIGINS[0];
 
