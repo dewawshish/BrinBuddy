@@ -263,7 +263,7 @@ const Auth = () => {
             {/* Cloudflare Turnstile captcha for both login and signup */}
             <div className="mt-4">
               <Turnstile
-                sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY /* replace with [APNA SITE KEY YAHAN LAGAO] */}
+                siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY /* API key should be defined in your .env */}
                 onVerify={(token) => setCaptchaToken(token)}
                 ref={captchaRef}
               />
