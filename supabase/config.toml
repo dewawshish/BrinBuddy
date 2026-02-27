@@ -21,3 +21,7 @@ verify_jwt = true
 
 [functions.fix-weak-areas-quiz]
 verify_jwt = true
+
+[functions.verify-turnstile]
+# captcha endpoint is called before signup so we don't require a JWT
+verify_jwt = false
