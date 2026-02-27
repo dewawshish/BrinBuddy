@@ -24,6 +24,17 @@ const Auth = () => {
   const navigate = useNavigate();
   const { login, signup, loginWithGoogle, user } = useAuth();
 
+  // clear token when switching modes so old values aren't submitted
+  useEffect(() => {
+    setTurnstileToken('');
+    if (window.turnstile) {
+      try {
+        // reset the widget if available
+        window.turnstile.reset();
+      } catch {} // ignore if widget not yet rendered
+    }
+  }, [isLogin]);
+
   // Redirect if already logged in
   useEffect(() => {
     if (user) {
