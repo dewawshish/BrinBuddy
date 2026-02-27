@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import Logo from '@/components/Logo';
-import Turnstile from '@/components/Turnstile';
+import Turnstile, { TurnstileHandle } from '@/components/Turnstile';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,13 +21,14 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
-  const captchaRef = useRef<any>(null);
+  const captchaRef = useRef<TurnstileHandle>(null);
   const navigate = useNavigate();
   const { login, signup, loginWithGoogle, user } = useAuth();
 
   // clear token when switching modes so old values aren't submitted
   useEffect(() => {
     setCaptchaToken('');
+    // use optional chaining to avoid crashes when ref is not yet attached
     captchaRef.current?.reset();
   }, [isLogin]);
 
