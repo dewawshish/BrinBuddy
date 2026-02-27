@@ -19,6 +19,7 @@ interface TurnstileProps {
 
 const Turnstile: React.FC<TurnstileProps> = ({ siteKey, onVerify }) => {
   const widgetRef = useRef<HTMLDivElement>(null);
+  const widgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const scriptId = 'cf-turnstile-script';
@@ -33,7 +34,7 @@ const Turnstile: React.FC<TurnstileProps> = ({ siteKey, onVerify }) => {
 
     const interval = setInterval(() => {
       if (window.turnstile && widgetRef.current) {
-        window.turnstile.render(widgetRef.current, {
+        const id = window.turnstile.render(widgetRef.current, {
           sitekey: siteKey,
           callback: (token: string) => {
             onVerify(token);
@@ -41,6 +42,7 @@ const Turnstile: React.FC<TurnstileProps> = ({ siteKey, onVerify }) => {
           'error-callback': () => onVerify(''),
           'expired-callback': () => onVerify(''),
         });
+        widgetIdRef.current = id;
         clearInterval(interval);
       }
     }, 100);

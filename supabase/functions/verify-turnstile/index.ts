@@ -38,7 +38,7 @@ function getCORSHeaders(originHeader: string | null): Record<string, string> {
   };
 }
 
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: getCORSHeaders(req.headers.get('origin')) });
   }
