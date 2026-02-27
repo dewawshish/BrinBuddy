@@ -246,7 +246,6 @@ function formatViewCount(count: number): string {
   return count.toString();
 }
 
-// Optional Gemini (Google) API key - prefer this for direct Gemini calls when present
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
 async function callGeminiAI(messages: { role: string; content: string }[], model = "google/gemini-3-flash-preview"): Promise<string> {
