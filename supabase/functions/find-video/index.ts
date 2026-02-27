@@ -246,6 +246,10 @@ function formatViewCount(count: number): string {
   return count.toString();
 }
 
+// Gemini (Google) API key – used by the AI helper below to break
+// down topics and choose the best educational videos.  This value must be
+// set as a secret in your Supabase project (e.g. `supabase secrets set GEMINI_API_KEY`)
+// or provided in your local environment so the function can execute AI calls.
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 
 async function callGeminiAI(messages: { role: string; content: string }[], model = "google/gemini-3-flash-preview"): Promise<string> {
