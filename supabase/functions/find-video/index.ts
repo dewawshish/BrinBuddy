@@ -109,13 +109,7 @@ function formatDuration(isoDuration: string): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
-/**
- * Calculate advanced quality score based on content quality metrics
- * - Engagement Rate (40%): likes/views ratio - indicates content quality
- * - View Count (25%): total reach and popularity
- * - Recency (20%): recent content tends to be better updated
- * - Like Count (15%): absolute engagement quantity
- */
+
 function calculateAdvancedEngagementScore(
   viewCount: number,
   likeCount: number,
@@ -135,14 +129,10 @@ function calculateAdvancedEngagementScore(
   // Engagement rate score (likes per view percentage)
   const engagementRateScore = Math.min(100, engagementRate * 20);
 
-  // Like count bonus (reward absolute engagement)
+
   const likeCountScore = Math.min(100, (likeCount / 100) * 5);
 
-  // Weighted composite score
-  // Engagement Rate (40% - most important for quality)
-  // View Count (25% - popularity indicator)
-  // Recency (20% - freshness)
-  // Like Count Bonus (15% - engagement quantity)
+
   const compositeScore = Math.round(
     engagementRateScore * 0.4 +
     viewScore * 0.25 +
