@@ -260,6 +260,15 @@ const Auth = () => {
               </>
             )}
 
+            {/* Cloudflare Turnstile captcha for both login and signup */}
+            <div className="mt-4">
+              <Turnstile
+                sitekey={import.meta.env.VITE_TURNSTILE_SITE_KEY /* replace with [APNA SITE KEY YAHAN LAGAO] */}
+                onVerify={(token) => setCaptchaToken(token)}
+                ref={captchaRef}
+              />
+            </div>
+
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
               <Input
