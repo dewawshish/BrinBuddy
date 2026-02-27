@@ -20,8 +20,8 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<{ error?: string }>;
-  signup: (email: string, password: string, name: string, username: string, turnstileToken?: string) => Promise<{ error?: string }>;
+  login: (email: string, password: string, captchaToken: string) => Promise<{ error?: string }>;
+  signup: (email: string, password: string, name: string, username: string, captchaToken: string) => Promise<{ error?: string }>;
   loginWithGoogle: () => Promise<{ error?: string }>;
   logout: () => Promise<void>;
 }
@@ -98,11 +98,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ error?: string }> => {
+  const login = async (email: string, password: string, captchaToken: string): Promise<{ error?: string }> => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
+        options: { captchaToken },
       });
 
       if (error) {
@@ -117,23 +118,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signup = async (email: string, password: string, name: string, username: string, turnstileToken?: string): Promise<{ error?: string }> => {
+  const signup = async (email: string, password: string, name: string, username: string, captchaToken: string): Promise<{ error?: string }> => {
     try {
-      // If a captcha token was provided, verify it on the server before creating the account.
-      if (!turnstileToken) {
+      if (!captchaToken) {
         return { error: 'Captcha verification required' };
-      }
-      const verifyResponse = await supabase.functions.invoke('verify-turnstile', {
-        body: JSON.stringify({ token: turnstileToken }),
-      });
-      // supabase.functions.invoke returns a { data, error } object; data may contain the JSON
-      if (verifyResponse.error) {
-        console.error('Turnstile verify error:', verifyResponse.error);
-        return { error: 'Captcha verification failed' };
-      }
-      const verifyData = verifyResponse.data as { success: boolean };
-      if (!verifyData?.success) {
-        return { error: 'Captcha verification failed' };
       }
 
       const redirectUrl = `${window.location.origin}/`;
@@ -142,6 +130,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         email,
         password,
         options: {
+          captchaToken,
           emailRedirectTo: redirectUrl,
           data: {
             name: username,

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Sparkles, AtSign, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import Logo from '@/components/Logo';
-import Turnstile from '@/components/Turnstile';
+import Turnstile from '@marsidev/react-turnstile';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -20,19 +20,15 @@ const Auth = () => {
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
+  const [captchaToken, setCaptchaToken] = useState('');
+  const captchaRef = useRef<HCaptcha>(null);
   const navigate = useNavigate();
   const { login, signup, loginWithGoogle, user } = useAuth();
 
   // clear token when switching modes so old values aren't submitted
   useEffect(() => {
-    setTurnstileToken('');
-    if (window.turnstile) {
-      try {
-        // reset the widget if available
-        window.turnstile.reset();
-      } catch {} // ignore if widget not yet rendered
-    }
+    setCaptchaToken('');
+    captchaRef.current?.reset();
   }, [isLogin]);
 
   // Redirect if already logged in
@@ -81,9 +77,17 @@ const Auth = () => {
 
     try {
       if (isLogin) {
-        const { error } = await login(email, password);
+        if (!captchaToken) {
+          toast.error('Please complete the captcha');
+          setIsLoading(false);
+          return;
+        }
+        const { error } = await login(email, password, captchaToken);
         if (error) {
           toast.error(error);
+          // reset captcha so user can try again
+          captchaRef.current?.reset();
+          setCaptchaToken('');
         } else {
           toast.success('Welcome back!');
           navigate('/dashboard');
@@ -104,18 +108,21 @@ const Auth = () => {
           setIsLoading(false);
           return;
         }
-        if (!turnstileToken) {
+        if (!captchaToken) {
           toast.error('Please complete the captcha');
           setIsLoading(false);
           return;
         }
-        const { error } = await signup(email, password, name, username.trim(), turnstileToken);
+        const { error } = await signup(email, password, name, username.trim(), captchaToken);
         if (error) {
           if (error.includes('profiles_name_unique') || error.includes('duplicate key')) {
             toast.error('This username is already taken. Please choose another.');
           } else {
             toast.error(error);
           }
+          // reset captcha so the user can solve it again
+          captchaRef.current?.reset();
+          setCaptchaToken('');
         } else {
           toast.success('Account created successfully!');
           navigate('/dashboard');
@@ -248,15 +255,8 @@ const Auth = () => {
                   <p className="text-xs text-destructive -mt-2">This username is already taken</p>
                 )}
 
-                {/* cloudflare turnstile captcha for new signups */}
-                {!isLogin && (
-                  <div className="mt-4">
-                    <Turnstile
-                      siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY}
-                      onVerify={(token) => setTurnstileToken(token)}
-                    />
-                  </div>
-                )}
+                {/* placeholder removed - captcha now rendered below */}
+                
               </>
             )}
 
@@ -290,7 +290,7 @@ const Auth = () => {
               variant="neon"
               size="lg"
               className="w-full"
-              disabled={isLoading || isGoogleLoading}
+              disabled={isLoading || isGoogleLoading || !captchaToken}
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
