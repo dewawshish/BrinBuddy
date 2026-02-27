@@ -8,6 +8,7 @@ declare global {
     turnstile?: {
       render: (el: HTMLElement, opts: Record<string, any>) => any;
       reset: (widgetId: any) => void;
+      remove?: (widgetId: any) => void; // used for cleanup
     };
   }
 }
@@ -44,7 +45,7 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
 
     useEffect(() => {
       // resolve site key (prop takes precedence)
-      const rawKey = siteKey ?? import.meta.env.VITE_TURNSTILE_SITE_KEY;
+      const rawKey = siteKey ?? (import.meta.env.VITE_TURNSTILE_SITE_KEY as string);
       const resolvedKey = typeof rawKey === 'string' ? rawKey.trim() : '';
 
       if (!resolvedKey) {
@@ -67,8 +68,8 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
       }
 
       const interval = setInterval(() => {
-        // only attempt to render when the global and element are ready
-        if (window.turnstile && widgetRef.current) {
+        // only attempt to render when the global and element are ready and we haven't already
+        if (window.turnstile && widgetRef.current && !widgetIdRef.current) {
           const id = window.turnstile.render(widgetRef.current, {
             sitekey: resolvedKey,
             callback: (token: string) => onVerify(token),
@@ -80,7 +81,12 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
         }
       }, 100);
 
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        if (widgetIdRef.current && window.turnstile?.remove) {
+          window.turnstile.remove(widgetIdRef.current);
+        }
+      };
     }, [siteKey, onVerify]);
 
     return <div ref={widgetRef} className="cf-turnstile" />;

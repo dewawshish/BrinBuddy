@@ -57,6 +57,7 @@ const Dashboard = () => {
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [streakModalOpen, setStreakModalOpen] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState(''); // token from Turnstile (if used on this page)
 
   const completedCount = todos.filter((t) => t.completed).length;
   const progress = todos.length > 0 ? (completedCount / todos.length) * 100 : 0;
@@ -111,11 +112,27 @@ const Dashboard = () => {
       let subtasksData: Record<string, unknown>[] = [];
 
       try {
-        const { data: videoData, error: videoError } = await supabase.functions.invoke('find-video', {
-          body: { topic: newTodoTitle.trim() },
-        });
+        // include the current user's access token so the edge function can authorize
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+
+        const invokePayload: any = {
+          body: {
+            topic: newTodoTitle.trim(),
+            turnstileToken: captchaToken, // pass captcha token for backend verification
+          },
+        };
+        if (accessToken) {
+          invokePayload.headers = { Authorization: `Bearer ${accessToken}` };
+        }
+
+        const { data: videoData, error: videoError } = await supabase.functions.invoke(
+          'find-video',
+          invokePayload,
+        );
 
         if (videoError) {
+          // log full error object for easier debugging (status, details)
           console.error('Edge function error:', videoError);
           toast.error('Video search failed: ' + (videoError.message || 'Unknown error'));
         } else if (videoData?.error) {
