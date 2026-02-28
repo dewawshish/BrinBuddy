@@ -57,7 +57,7 @@ const Dashboard = () => {
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [streakModalOpen, setStreakModalOpen] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState(''); // token from Turnstile (if used on this page)
+  const [captchaToken,] = useState(''); // token from Turnstile (if used on this page)
 
   const completedCount = todos.filter((t) => t.completed).length;
   const progress = todos.length > 0 ? (completedCount / todos.length) * 100 : 0;

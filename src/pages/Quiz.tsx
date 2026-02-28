@@ -239,8 +239,6 @@ const Quiz = () => {
   const saveResults = async () => {
     if (!user || !quizId || !savedQuizId) return;
 
-    const score = calculateScore();
-
     try {
       // Call the new secure submit-quiz-results endpoint
       const { data, error } = await supabase.functions.invoke('submit-quiz-results', {

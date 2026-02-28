@@ -15,6 +15,21 @@
 
 import { supabase } from '@/integrations/supabase/client';
 
+type FindVideoInvokePayload = {
+  body: {
+    topic: string;
+    filters: {
+      class?: string;
+      subject?: string;
+      board?: string;
+      language?: string;
+      videoType?: string;
+      videoDuration?: string;
+    };
+  };
+  headers?: Record<string, string>;
+};
+
 /**
  * Generate study notes using the secure generate-notes edge function
  */
@@ -112,7 +127,7 @@ export async function findVideoWithBytez(
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
 
-    const invokePayload: any = {
+    const invokePayload: FindVideoInvokePayload = {
       body: {
         topic,
         filters,
