@@ -19,6 +19,17 @@ const ALLOWED_ORIGINS = [
   'https://lovable.dev',
 ];
 
+interface YouTubeVideo {
+  videoId: string;
+  title: string;
+  channel: string;
+  viewCount: number;
+  durationFormatted: string;
+  thumbnail: string;
+  engagementScore: number;
+  engagementRate?: number;
+}
+
 function getCORSHeaders(originHeader: string | null): Record<string, string> {
   // Allow explicit origins from the whitelist, and allow common dev origins
   // such as localhost and GitHub Codespaces (app.github.dev) for development.
@@ -92,7 +103,7 @@ interface YouTubeVideo {
   videoId: string;
   title: string;
   channel: string;
-  viewCount: string;
+  viewCount: number;
   publishedAt: string;
   duration: string;
   durationFormatted: string;
@@ -289,7 +300,7 @@ async function callGeminiAI(messages: { role: string; content: string }[], model
 }
 
 // wrapper maintained for backwards compatibility
-async function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
+function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
   // simply delegate to the direct Gemini call
   return callGeminiAI(messages);
 }
@@ -416,7 +427,7 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
           return {
             title: subtask.title || `Part ${idx + 1}`,
             description: subtask.searchQuery || '',
-            videos: videos.map((v: any, i: number) => ({
+            videos: videos.map((v: YouTubeVideo, i: number) => ({
               videoId: v.videoId,
               title: v.title,
               channel: v.channel,

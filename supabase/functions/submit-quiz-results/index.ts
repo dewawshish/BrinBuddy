@@ -189,7 +189,7 @@ serve(async (req: Request) => {
 
     // Award coins through atomic transaction if coins > 0
     if (validatedCoins > 0) {
-      const { data: coinResult, error: coinError } = await supabaseClient.rpc(
+      const { error: coinError } = await supabaseClient.rpc(
         'add_coins_transaction',
         {
           p_user_id: userId,
