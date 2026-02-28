@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+import process from "node:process";
 import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/

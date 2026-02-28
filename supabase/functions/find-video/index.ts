@@ -41,6 +41,19 @@ interface SubtaskVideoResult {
   reason: string;
 }
 
+interface GeminiTextPart {
+  text?: string;
+}
+
+interface GeminiCandidate {
+  content?: GeminiTextPart[];
+}
+
+interface GeminiResponse {
+  candidates?: GeminiCandidate[];
+  output?: unknown;
+}
+
 function getCORSHeaders(originHeader: string | null): Record<string, string> {
   // Allow explicit origins from the whitelist, and allow common dev origins
   // such as localhost and GitHub Codespaces (app.github.dev) for development.
@@ -298,13 +311,12 @@ async function callGeminiAI(messages: { role: string; content: string }[], model
     throw new Error(`Gemini API error: ${res.status} ${txt}`);
   }
 
-  const data = await res.json();
+  const data: GeminiResponse = await res.json();
 
-  // Try common response shapes
-  if (data?.candidates && data.candidates.length > 0 && data.candidates[0].content) {
-    return data.candidates[0].content.map((c: any) => c.text || '').join('');
+  if (data.candidates?.length && data.candidates[0].content) {
+    return data.candidates[0].content ?.map((c) => c.text ?? '').join('') ?? '';
   }
-  if (data?.output) {
+  if (data.output) {
     return JSON.stringify(data.output);
   }
   return JSON.stringify(data);

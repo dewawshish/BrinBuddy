@@ -22,10 +22,12 @@ interface TurnstileAPI {
   remove?: (widgetId: TurnstileWidgetId) => void;
 }
 
+/**
+ * Extend globalThis instead of Window (Deno 2 compatible)
+ */
 declare global {
-  interface Window {
-    turnstile?: TurnstileAPI;
-  }
+  // eslint-disable-next-line no-var
+  var turnstile: TurnstileAPI | undefined;
 }
 
 /**
@@ -55,9 +57,9 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
         try {
           const id = widgetIdRef.current;
           const container = widgetRef.current;
-          if (id && window.turnstile && container?.isConnected) {
-            window.turnstile.reset(id);
-          } else if (!window.turnstile) {
+          if (id && globalThis.turnstile && container?.isConnected) {
+            globalThis.turnstile.reset(id);
+          } else if (!globalThis.turnstile) {
             console.warn('[Turnstile] reset called but script not loaded');
           }
         } catch (err) {
@@ -91,10 +93,9 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
       }
 
       const interval = setInterval(() => {
-        // only attempt to render when the global and element are ready and we haven't already
-        if (window.turnstile && widgetRef.current && !widgetIdRef.current) {
+        if (globalThis.turnstile && widgetRef.current && !widgetIdRef.current) {
           try {
-            const id = window.turnstile.render(widgetRef.current, {
+            const id = globalThis.turnstile.render(widgetRef.current, {
               sitekey: resolvedKey,
               callback: (token: string) => onVerify(token),
               'error-callback': () => onVerify(''),
@@ -113,11 +114,10 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
         clearInterval(interval);
         if (widgetIdRef.current) {
           try {
-            if (window.turnstile?.remove) {
-              window.turnstile.remove(widgetIdRef.current);
-            } else if (window.turnstile) {
-              // also try to reset as a fallback
-              window.turnstile.reset(widgetIdRef.current);
+            if (globalThis.turnstile?.remove) {
+              globalThis.turnstile.remove(widgetIdRef.current);
+            } else if (globalThis.turnstile) {
+              globalThis.turnstile.reset(widgetIdRef.current);
             }
           } catch (err) {
             console.error('[Turnstile] cleanup error', err);
