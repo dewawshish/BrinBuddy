@@ -37,8 +37,16 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
     // expose imperative methods
     useImperativeHandle(ref, () => ({
       reset: () => {
-        if (widgetIdRef.current && window.turnstile) {
-          window.turnstile.reset(widgetIdRef.current);
+        try {
+          const id = widgetIdRef.current;
+          const container = widgetRef.current;
+          if (id && window.turnstile && container?.isConnected) {
+            window.turnstile.reset(id);
+          } else if (!window.turnstile) {
+            console.warn('[Turnstile] reset called but script not loaded');
+          }
+        } catch (err) {
+          console.error('[Turnstile] error resetting widget', err);
         }
       },
     }));
@@ -70,21 +78,36 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
       const interval = setInterval(() => {
         // only attempt to render when the global and element are ready and we haven't already
         if (window.turnstile && widgetRef.current && !widgetIdRef.current) {
-          const id = window.turnstile.render(widgetRef.current, {
-            sitekey: resolvedKey,
-            callback: (token: string) => onVerify(token),
-            'error-callback': () => onVerify(''),
-            'expired-callback': () => onVerify(''),
-          });
-          widgetIdRef.current = id;
-          clearInterval(interval);
+          try {
+            const id = window.turnstile.render(widgetRef.current, {
+              sitekey: resolvedKey,
+              callback: (token: string) => onVerify(token),
+              'error-callback': () => onVerify(''),
+              'expired-callback': () => onVerify(''),
+            });
+            widgetIdRef.current = id;
+          } catch (err) {
+            console.error('[Turnstile] render failed', err);
+          } finally {
+            clearInterval(interval);
+          }
         }
       }, 100);
 
       return () => {
         clearInterval(interval);
-        if (widgetIdRef.current && window.turnstile?.remove) {
-          window.turnstile.remove(widgetIdRef.current);
+        if (widgetIdRef.current) {
+          try {
+            if (window.turnstile?.remove) {
+              window.turnstile.remove(widgetIdRef.current);
+            } else if (window.turnstile) {
+              // also try to reset as a fallback
+              window.turnstile.reset(widgetIdRef.current);
+            }
+          } catch (err) {
+            console.error('[Turnstile] cleanup error', err);
+          }
+          widgetIdRef.current = null;
         }
       };
     }, [siteKey, onVerify]);
