@@ -26,8 +26,9 @@ interface TurnstileAPI {
  * Extend globalThis instead of Window (Deno 2 compatible)
  */
 declare global {
-  // eslint-disable-next-line no-var
-  var turnstile: TurnstileAPI | undefined;
+  interface globalThis {
+    turnstile?: TurnstileAPI;
+  }
 }
 
 /**
