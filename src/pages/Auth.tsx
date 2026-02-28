@@ -21,6 +21,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaPending, setCaptchaPending] = useState(false); // indicates form submission waiting for token
   const captchaRef = useRef<TurnstileHandle>(null);
   const navigate = useNavigate();
   const { login, signup, loginWithGoogle, user } = useAuth();
@@ -28,6 +29,7 @@ const Auth = () => {
   // clear token when switching modes so old values aren't submitted
   useEffect(() => {
     setCaptchaToken('');
+    setCaptchaPending(false);
     // use optional chaining to avoid crashes when ref is not yet attached
     captchaRef.current?.reset();
   }, [isLogin]);
@@ -72,21 +74,36 @@ const Auth = () => {
     return () => clearTimeout(timeoutId);
   }, [username, isLogin]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+  // helper that actually runs login/signup once a valid token is available
+  const handleAuthWithToken = async (token: string) => {
+    setCaptchaPending(false);
 
+    // basic client-side validation that doesn't require a network call
+    if (!isLogin) {
+      if (!name.trim()) {
+        toast.error('Please enter your name');
+        return;
+      }
+      if (!username.trim()) {
+        toast.error('Please enter a username');
+        return;
+      }
+      if (isUsernameAvailable === false) {
+        toast.error('This username is already taken');
+        return;
+      }
+    }
+
+    setIsLoading(true);
     try {
       if (isLogin) {
-        if (!captchaToken) {
-          toast.error('Please complete the captcha');
-          setIsLoading(false);
-          return;
-        }
-        const { error } = await login(email, password, captchaToken);
+        const { error } = await login(email, password, token);
         if (error) {
-          toast.error(error);
-          // reset captcha so user can try again
+          if (error === 'Unauthorized' || error.includes('401')) {
+            toast.error('Captcha verification failed, please try again');
+          } else {
+            toast.error(error);
+          }
           captchaRef.current?.reset();
           setCaptchaToken('');
         } else {
@@ -94,34 +111,15 @@ const Auth = () => {
           navigate('/dashboard');
         }
       } else {
-        if (!name.trim()) {
-          toast.error('Please enter your name');
-          setIsLoading(false);
-          return;
-        }
-        if (!username.trim()) {
-          toast.error('Please enter a username');
-          setIsLoading(false);
-          return;
-        }
-        if (isUsernameAvailable === false) {
-          toast.error('This username is already taken');
-          setIsLoading(false);
-          return;
-        }
-        if (!captchaToken) {
-          toast.error('Please complete the captcha');
-          setIsLoading(false);
-          return;
-        }
-        const { error } = await signup(email, password, name, username.trim(), captchaToken);
+        const { error } = await signup(email, password, name, username.trim(), token);
         if (error) {
           if (error.includes('profiles_name_unique') || error.includes('duplicate key')) {
             toast.error('This username is already taken. Please choose another.');
+          } else if (error === 'Unauthorized' || error.includes('401')) {
+            toast.error('Captcha verification failed, please try again');
           } else {
             toast.error(error);
           }
-          // reset captcha so the user can solve it again
           captchaRef.current?.reset();
           setCaptchaToken('');
         } else {
@@ -129,11 +127,25 @@ const Auth = () => {
           navigate('/dashboard');
         }
       }
-    } catch (_error) {
+    } catch (err) {
+      console.error('Auth error', err);
       toast.error('Something went wrong');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!captchaToken) {
+      // mark that we want to submit once the captcha resolves
+      setCaptchaPending(true);
+      toast.error('Please complete the captcha');
+      return;
+    }
+
+    handleAuthWithToken(captchaToken);
   };
 
   return (
@@ -265,7 +277,14 @@ const Auth = () => {
             <div className="mt-4">
               <Turnstile
                 siteKey={import.meta.env.VITE_TURNSTILE_SITE_KEY /* API key should be defined in your .env */}
-                onVerify={(token) => setCaptchaToken(token)}
+                onVerify={(token) => {
+                    setCaptchaToken(token);
+                    // if we were waiting for a token from a submit, fire it now
+                    if (captchaPending) {
+                      // perform authentication using latest token
+                      handleAuthWithToken(token);
+                    }
+                  }}
                 ref={captchaRef}
               />
             </div>
@@ -300,7 +319,7 @@ const Auth = () => {
               variant="neon"
               size="lg"
               className="w-full"
-              disabled={isLoading || isGoogleLoading || !captchaToken}
+              disabled={isLoading || isGoogleLoading}
             >
               {isLoading ? (
                 <div className="flex items-center gap-2">
