@@ -30,6 +30,17 @@ interface YouTubeVideo {
   engagementRate?: number;
 }
 
+interface SubtaskVideoResult {
+  videoId: string;
+  title: string;
+  channel: string;
+  views: number;
+  duration: string;
+  thumbnail: string;
+  engagementScore: number;
+  reason: string;
+}
+
 function getCORSHeaders(originHeader: string | null): Record<string, string> {
   // Allow explicit origins from the whitelist, and allow common dev origins
   // such as localhost and GitHub Codespaces (app.github.dev) for development.
@@ -467,7 +478,7 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
         ...mainVideoQuality,
         subtasks: subtasksWithVideos.map(subtask => ({
           ...subtask,
-          videos: subtask.videos.map((v: any, i: number) => ({
+          videos: subtask.videos.map((v: SubtaskVideoResult, i: number) => ({
             videoId: v.videoId,
             title: v.title,
             channel: v.channel,

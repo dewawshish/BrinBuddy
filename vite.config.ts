@@ -1,4 +1,4 @@
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type UserConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const proxyTarget = env.VITE_SUPABASE_PROXY_TARGET || env.VITE_SUPABASE_URL;
 
-  const server: Record<string, any> = {
+  const server: UserConfig["server"] = {
     host: "::",
     port: 8080,
   };

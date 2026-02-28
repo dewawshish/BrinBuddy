@@ -1,15 +1,30 @@
 import React, { useEffect, useRef, useImperativeHandle } from 'react';
 
-// Cloudflare injects a global `turnstile` object once the script loads.
-// We declare it here so TypeScript doesn't complain when we access it.
+/**
+ * Type definitions for Cloudflare Turnstile
+ */
+
+interface TurnstileRenderOptions {
+  sitekey: string;
+  callback?: (token: string) => void;
+  "error-callback"?: () => void;
+  "expired-callback"?: () => void;
+}
+
+type TurnstileWidgetId = string;
+
+interface TurnstileAPI {
+  render: (
+    el: HTMLElement,
+    opts: TurnstileRenderOptions
+  ) => TurnstileWidgetId;
+  reset: (widgetId: TurnstileWidgetId) => void;
+  remove?: (widgetId: TurnstileWidgetId) => void;
+}
 
 declare global {
   interface Window {
-    turnstile?: {
-      render: (el: HTMLElement, opts: Record<string, any>) => any;
-      reset: (widgetId: any) => void;
-      remove?: (widgetId: any) => void; // used for cleanup
-    };
+    turnstile?: TurnstileAPI;
   }
 }
 
@@ -22,8 +37,8 @@ export interface TurnstileHandle {
 
 interface TurnstileProps {
   /**
-   * Site key for the Cloudflare Turnstile widget.  If omitted the
-   * value from `import.meta.env.VITE_TURNSTILE_SITE_KEY` will be used.
+   * Site key for the Cloudflare Turnstile widget.
+   * If omitted the value from VITE_TURNSTILE_SITE_KEY will be used.
    */
   siteKey?: string;
   onVerify: (token: string) => void;
@@ -32,7 +47,7 @@ interface TurnstileProps {
 const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
   ({ siteKey, onVerify }, ref) => {
     const widgetRef = useRef<HTMLDivElement>(null);
-    const widgetIdRef = useRef<string | null>(null);
+    const widgetIdRef = useRef<TurnstileWidgetId | null>(null);
 
     // expose imperative methods
     useImperativeHandle(ref, () => ({
