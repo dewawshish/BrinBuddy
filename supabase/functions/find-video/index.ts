@@ -19,51 +19,8 @@ const ALLOWED_ORIGINS = [
   'https://lovable.dev',
 ];
 
-interface YouTubeVideo {
-  videoId: string;
-  title: string;
-  channel: string;
-  viewCount: number;
-  durationFormatted: string;
-  thumbnail: string;
-  engagementScore: number;
-  engagementRate?: number;
-}
-
-interface SubtaskVideoResult {
-  videoId: string;
-  title: string;
-  channel: string;
-  views: number;
-  duration: string;
-  thumbnail: string;
-  engagementScore: number;
-  reason: string;
-}
-
-interface GeminiTextPart {
-  text?: string;
-}
-
-interface GeminiCandidate {
-  content?: GeminiTextPart[];
-}
-
-interface GeminiResponse {
-  candidates?: GeminiCandidate[];
-  output?: unknown;
-}
-
 function getCORSHeaders(originHeader: string | null): Record<string, string> {
-  // Allow explicit origins from the whitelist, and allow common dev origins
-  // such as localhost and GitHub Codespaces (app.github.dev) for development.
-  const isDevAllowed = originHeader && (
-    originHeader.startsWith('http://localhost') ||
-    originHeader.startsWith('https://localhost') ||
-    originHeader.endsWith('.app.github.dev')
-  );
-
-  const allowedOrigin = (originHeader && (ALLOWED_ORIGINS.includes(originHeader) || isDevAllowed))
+  const allowedOrigin = (originHeader && ALLOWED_ORIGINS.includes(originHeader))
     ? originHeader
     : ALLOWED_ORIGINS[0];
 
@@ -123,209 +80,126 @@ function sanitizeInput(input: string, maxLength: number = MAX_TOPIC_LENGTH): { i
   return { isValid: true, sanitized };
 }
 
-interface YouTubeVideo {
+interface InvidiousVideo {
   videoId: string;
   title: string;
-  channel: string;
+  author: string;
+  lengthSeconds: number;
   viewCount: number;
-  publishedAt: string;
-  duration: string;
-  durationFormatted: string;
+  publishedText: string;
   thumbnail: string;
   engagementScore: number;
-  likeCount?: number;
-  viewCountNum?: number;
-  engagementRate?: number;
 }
 
-function formatDuration(isoDuration: string): string {
-  const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  if (!match) return '0:00';
-  
-  const hours = parseInt(match[1] || '0');
-  const minutes = parseInt(match[2] || '0');
-  const seconds = parseInt(match[3] || '0');
-  
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+// Groq API call for generating search queries
+async function callGroqAI(messages: { role: string; content: string }[]): Promise<string> {
+  const GROQ_API_KEY = Deno.env.get("VITE_GROQ_API_KEY");
+
+  if (!GROQ_API_KEY) {
+    console.error('GROQ_API_KEY not configured, using fallback queries');
+    return JSON.stringify({
+      subtasks: [],
+      mainSearchQuery: ""
+    });
   }
-  return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+  console.log("Calling Groq API for video discovery...");
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "mixtral-8x7b-32768",
+        messages,
+        temperature: 0.7,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Groq API error:", response.status, errorText);
+      throw new Error(`Groq API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || "";
+  } catch (error) {
+    console.error("Groq API call failed:", error);
+    throw error;
+  }
 }
 
+// Search videos using Invidious API (completely free, no auth required)
+async function searchInvidious(query: string, maxResults: number = 5): Promise<InvidiousVideo[]> {
+  console.log(`Searching Invidious for: "${query}"`);
 
-function calculateAdvancedEngagementScore(
-  viewCount: number,
-  likeCount: number,
-  publishedAt: string
-): { score: number; engagementRate: number } {
-  // Calculate engagement rate (likes per 1000 views)
-  const engagementRate = viewCount > 0 ? (likeCount / viewCount) * 100 : 0;
+  try {
+    const searchUrl = `https://invidious.io/api/v1/search?q=${encodeURIComponent(query)}&type=video&sort=relevance&limit=${maxResults}`;
 
-  // Publish date recency score
-  const publishDate = new Date(publishedAt).getTime();
-  const daysSincePublish = Math.max(1, (Date.now() - publishDate) / (1000 * 60 * 60 * 24));
-  const recencyScore = Math.max(0, 100 - Math.log10(daysSincePublish + 1) * 20);
+    const response = await fetch(searchUrl);
+    if (!response.ok) {
+      console.error('Invidious search error:', response.status);
+      throw new Error(`Invidious API error: ${response.status}`);
+    }
 
-  // View count score (logarithmic normalization)
-  const viewScore = Math.min(100, Math.log10(Math.max(1, viewCount)) * 15);
+    const results = await response.json() as unknown;
 
-  // Engagement rate score (likes per view percentage)
-  const engagementRateScore = Math.min(100, engagementRate * 20);
+    if (!Array.isArray(results)) {
+      console.error('Unexpected Invidious response format');
+      return [];
+    }
 
+    const videos: InvidiousVideo[] = results
+      .filter((item: unknown) => {
+        const video = item as Record<string, unknown>;
+        return video.type === 'video' && video.videoId;
+      })
+      .map((item: unknown) => {
+        const video = item as Record<string, unknown>;
+        const viewCount = parseInt(String(video.viewCountText || '0').replace(/[^0-9]/g, '')) || 0;
 
-  const likeCountScore = Math.min(100, (likeCount / 100) * 5);
+        // Calculate engagement score based on views and recency
+        const engagementScore = Math.min(100, Math.max(1, Math.log(viewCount + 1) * 10));
 
+        return {
+          videoId: String(video.videoId || ''),
+          title: String(video.title || ''),
+          author: String(video.author || ''),
+          lengthSeconds: parseInt(String(video.lengthSeconds || '0')) || 0,
+          viewCount,
+          publishedText: String(video.publishedText || ''),
+          thumbnail: String(video.thumbnail || ''),
+          engagementScore,
+        };
+      });
 
-  const compositeScore = Math.round(
-    engagementRateScore * 0.4 +
-    viewScore * 0.25 +
-    recencyScore * 0.2 +
-    likeCountScore * 0.15
-  );
-
-  return {
-    score: Math.min(100, Math.max(1, compositeScore)),
-    engagementRate: Math.round(engagementRate * 100) / 100,
-  };
-}
-
-async function searchYouTube(query: string, apiKey: string, maxResults: number = 10): Promise<YouTubeVideo[]> {
-  console.log(`Searching YouTube for: "${query}"`);
-  
-  const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&videoDuration=medium&videoEmbeddable=true&order=relevance&maxResults=${maxResults * 2}&key=${apiKey}`;
-  
-  const searchResponse = await fetch(searchUrl);
-  if (!searchResponse.ok) {
-    console.error('YouTube search error:', searchResponse.status);
-    throw new Error(`YouTube API error: ${searchResponse.status}`);
-  }
-  
-  const searchData = await searchResponse.json();
-  interface VideoItem {
-    id: { videoId: string };
-    [key: string]: unknown;
-  }
-  const videoIds = searchData.items?.map((item: VideoItem) => item.id.videoId).join(',');
-  
-  if (!videoIds) {
+    return videos.sort((a, b) => b.engagementScore - a.engagementScore);
+  } catch (error) {
+    console.error('Invidious search failed:', error);
     return [];
   }
-  
-  const detailsUrl = `https://www.googleapis.com/youtube/v3/videos?part=statistics,contentDetails,snippet&id=${videoIds}&key=${apiKey}`;
-  
-  const detailsResponse = await fetch(detailsUrl);
-  if (!detailsResponse.ok) {
-    console.error('YouTube details error:', detailsResponse.status);
-    throw new Error('Failed to get video details');
-  }
-  
-  const detailsData = await detailsResponse.json();
-  
-  interface VideoDetailsItem {
-    id: string;
-    snippet: {
-      title: string;
-      description: string;
-      thumbnails: { medium?: { url: string }; default?: { url: string } };
-      channelTitle: string;
-      publishedAt: string;
-    };
-    contentDetails?: { duration: string };
-    statistics?: { viewCount: string; likeCount: string };
-    [key: string]: unknown;
-  }
-  const videos: YouTubeVideo[] = detailsData.items?.map((item: VideoDetailsItem) => {
-    const viewCount = parseInt(item.statistics?.viewCount || '0');
-    const likeCount = parseInt(item.statistics?.likeCount || '0');
-    
-    const { score: engagementScore, engagementRate } = calculateAdvancedEngagementScore(
-      viewCount,
-      likeCount,
-      item.snippet.publishedAt
-    );
-    
-    const thumbnails = item.snippet.thumbnails;
-    const thumbnail = thumbnails?.medium?.url || thumbnails?.default?.url || '';
-    
-    console.log(`Video: ${item.snippet.title} | Views: ${viewCount} | Likes: ${likeCount} | Engagement Rate: ${engagementRate}% | Score: ${engagementScore}`);
-    
-    return {
-      videoId: item.id,
-      title: item.snippet.title,
-      channel: item.snippet.channelTitle,
-      viewCount: formatViewCount(viewCount),
-      publishedAt: item.snippet.publishedAt,
-      duration: item.contentDetails?.duration || "PT0S",
-      durationFormatted: formatDuration(item.contentDetails?.duration || "PT0S"),
-      thumbnail,
-      engagementScore,
-      likeCount,
-      viewCountNum: viewCount,
-      engagementRate,
-    };
-  }) || [];
-  
-  // Sort by advanced engagement score
-  videos.sort((a, b) => b.engagementScore - a.engagementScore);
-  
-  return videos.slice(0, maxResults);
 }
 
-function formatViewCount(count: number): string {
-  if (count >= 1000000) {
-    return `${(count / 1000000).toFixed(1)}M`;
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }
-  if (count >= 1000) {
-    return `${(count / 1000).toFixed(1)}K`;
-  }
-  return count.toString();
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Gemini (Google) API key – used by the AI helper below to break
-// down topics and choose the best educational videos.  This value must be
-// set as a secret in your Supabase project (e.g. `supabase secrets set GEMINI_API_KEY`)
-// or provided in your local environment so the function can execute AI calls.
-const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-
-async function callGeminiAI(messages: { role: string; content: string }[], model = "google/gemini-3-flash-preview"): Promise<string> {
-  if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
-
-  const url = `https://generativeai.googleapis.com/v1/models/${encodeURIComponent(model)}:generateMessage?key=${encodeURIComponent(
-    GEMINI_API_KEY
-  )}`;
-
-  const payload = {
-    messages: messages.map((m) => ({ author: m.role === 'assistant' ? 'assistant' : m.role, content: [{ type: 'text', text: m.content }] })),
-    temperature: 0.2,
-    maxOutputTokens: 800,
-  };
-
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`Gemini API error: ${res.status} ${txt}`);
-  }
-
-  const data: GeminiResponse = await res.json();
-
-  if (data.candidates?.length && data.candidates[0].content) {
-    return data.candidates[0].content ?.map((c) => c.text ?? '').join('') ?? '';
-  }
-  if (data.output) {
-    return JSON.stringify(data.output);
-  }
-  return JSON.stringify(data);
-}
-
-// wrapper maintained for backwards compatibility
-function callLovableAI(messages: { role: string; content: string }[]): Promise<string> {
-  // simply delegate to the direct Gemini call
-  return callGeminiAI(messages);
+interface Subtask {
+  title: string;
+  searchQuery?: string;
+  [key: string]: unknown;
 }
 
 serve(async (req: Request) => {
@@ -336,7 +210,7 @@ serve(async (req: Request) => {
 
   try {
     const corsHeaders = getCORSHeaders(req.headers.get('origin'));
-    
+
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -372,100 +246,100 @@ serve(async (req: Request) => {
     }
     const sanitizedTopic = validation.sanitized;
 
-    const YOUTUBE_API_KEY = Deno.env.get('youtube_api_key');
-    
-    if (!YOUTUBE_API_KEY) {
-      throw new Error('YouTube API key is not configured');
-    }
-
     console.log('Finding videos for topic:', sanitizedTopic);
 
-    const content = await callLovableAI([
-      {
-        role: "system",
-        content: `You are an educational content planner. Break down learning topics into 3-5 logical subtasks/subtopics that someone would need to learn to master the main topic.
+    // Try to use Groq for query generation, fall back to defaults if not available
+    let parsedData: { subtasks?: Subtask[]; mainSearchQuery?: string } = {
+      subtasks: [],
+      mainSearchQuery: `${sanitizedTopic} tutorial explained`,
+    };
 
-You must respond with ONLY a valid JSON object, no markdown, no code blocks.
-The JSON must have this exact structure:
+    try {
+      const groqResponse = await callGroqAI([
+        {
+          role: "system",
+          content: `You are an educational content planner. Break down learning topics into 3-5 logical subtasks/subtopics.
+Return ONLY a valid JSON object with this structure:
 {
   "subtasks": [
-    {
-      "title": "Subtask title",
-      "searchQuery": "optimized YouTube search query for this subtask"
-    }
+    {"title": "Subtask title", "searchQuery": "optimized search query"}
   ],
-  "mainSearchQuery": "best YouTube search query for the main topic"
-}
+  "mainSearchQuery": "best search query for main topic"
+}`,
+        },
+        {
+          role: "user",
+          content: `Topic: "${sanitizedTopic}"\n\nBreak into 3-5 subtasks with educational search queries.`,
+        }
+      ]);
 
-Add "tutorial", "explained", or "for beginners" to make searches more educational.`
-      },
-      {
-        role: "user",
-        content: `Topic: "${sanitizedTopic}"
-
-Break this into 3-5 subtasks and provide optimized YouTube search queries for educational videos on each.`
-      }
-    ]);
-
-    console.log('AI response received');
-
-    let parsedData;
-    try {
-      let cleanContent = content.trim();
+      let cleanContent = groqResponse.trim();
       if (cleanContent.startsWith('```json')) cleanContent = cleanContent.slice(7);
       if (cleanContent.startsWith('```')) cleanContent = cleanContent.slice(3);
       if (cleanContent.endsWith('```')) cleanContent = cleanContent.slice(0, -3);
-      parsedData = JSON.parse(cleanContent.trim());
+
+      const parsed = JSON.parse(cleanContent.trim());
+      if (parsed.mainSearchQuery && Array.isArray(parsed.subtasks)) {
+        parsedData = parsed;
+      }
     } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError);
+      console.warn('Failed to parse Groq response, using fallback queries:', parseError);
       parsedData = {
         subtasks: [
           { title: `Introduction to ${sanitizedTopic}`, searchQuery: `${sanitizedTopic} introduction tutorial` },
           { title: `Core concepts of ${sanitizedTopic}`, searchQuery: `${sanitizedTopic} explained for beginners` },
-          { title: `Practice ${sanitizedTopic}`, searchQuery: `${sanitizedTopic} examples practice` }
+          { title: `Advanced ${sanitizedTopic}`, searchQuery: `${sanitizedTopic} advanced concepts` }
         ],
         mainSearchQuery: `${sanitizedTopic} tutorial explained`
       };
     }
 
-    const mainVideos = await searchYouTube(parsedData.mainSearchQuery || `${sanitizedTopic} tutorial`, YOUTUBE_API_KEY, 5);
+    // Search for main video using Invidious (completely free)
+    console.log('Searching for main videos with query:', parsedData.mainSearchQuery);
+    const mainVideos = await searchInvidious(parsedData.mainSearchQuery || `${sanitizedTopic} tutorial`, 5);
+
+    if (!mainVideos || mainVideos.length === 0) {
+      console.error('No videos found for:', sanitizedTopic);
+      return new Response(
+        JSON.stringify({
+          error: `No educational videos found for "${sanitizedTopic}". Try a more specific topic.`,
+          videoId: null,
+          title: null,
+        }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const primaryVideo = mainVideos[0];
+    console.log('Found primary video:', primaryVideo.title);
 
-    if (!primaryVideo) {
-      throw new Error('No videos found for this topic');
-    }
-
-    interface Subtask {
-      id: string;
-      title: string;
-      searchQuery?: string;
-      description?: string;
-      [key: string]: unknown;
-    }
-
+    // Search for subtask videos in parallel
     const subtasksWithVideos = await Promise.all(
       (parsedData.subtasks || []).slice(0, 5).map(async (subtask: Subtask, idx: number) => {
         try {
-          const videos = await searchYouTube(subtask.searchQuery || `${sanitizedTopic} ${subtask.title}`, YOUTUBE_API_KEY, 5);
+          const searchQuery = subtask.searchQuery || `${sanitizedTopic} ${subtask.title}`;
+          const videos = await searchInvidious(searchQuery, 5);
+
           return {
             title: subtask.title || `Part ${idx + 1}`,
-            description: subtask.searchQuery || '',
-            videos: videos.map((v: YouTubeVideo, i: number) => ({
+            searchQuery: searchQuery || '',
+            videos: videos.map((v, i) => ({
               videoId: v.videoId,
               title: v.title,
-              channel: v.channel,
-              views: v.viewCount,
-              duration: v.durationFormatted,
+              channel: v.author,
+              views: v.viewCount.toLocaleString(),
+              duration: formatDuration(v.lengthSeconds),
               thumbnail: v.thumbnail,
               engagementScore: v.engagementScore,
-              reason: i === 0 ? 'Highest engagement for this topic' : `Recommended video #${i + 1}`
+              reason: i === 0 ? 'Most relevant for this topic' : `Recommended video #${i + 1}`,
+              url: `https://invidious.io/watch?v=${v.videoId}`
             }))
           };
         } catch (err) {
           console.error(`Error searching for subtask ${subtask.title}:`, err);
           return {
             title: subtask.title || `Part ${idx + 1}`,
-            description: subtask.searchQuery || '',
+            searchQuery: subtask.searchQuery || '',
             videos: []
           };
         }
@@ -474,34 +348,17 @@ Break this into 3-5 subtasks and provide optimized YouTube search queries for ed
 
     console.log(`Found ${mainVideos.length} main videos and ${subtasksWithVideos.length} subtasks`);
 
-    // Format main video with quality metrics
-    const mainVideoQuality = {
-      videoId: primaryVideo.videoId,
-      title: primaryVideo.title,
-      channel: primaryVideo.channel,
-      views: primaryVideo.viewCount,
-      engagement: primaryVideo.engagementRate ? `${primaryVideo.engagementRate}%` : 'N/A',
-      quality: primaryVideo.engagementScore,
-      reason: `Best educational video for "${sanitizedTopic}" - ${primaryVideo.viewCount} views, ${primaryVideo.engagementRate ? primaryVideo.engagementRate + '% engagement rate' : 'excellent quality'}`
-    };
-
     return new Response(
       JSON.stringify({
-        ...mainVideoQuality,
-        subtasks: subtasksWithVideos.map(subtask => ({
-          ...subtask,
-          videos: subtask.videos.map((v: SubtaskVideoResult, i: number) => ({
-            videoId: v.videoId,
-            title: v.title,
-            channel: v.channel,
-            views: v.views,
-            engagement: (v as { engagement?: string }).engagement || `${(v as { engagementRate?: number }).engagementRate}%` || 'N/A',
-            quality: v.engagementScore,
-            duration: v.duration,
-            thumbnail: v.thumbnail,
-            reason: i === 0 ? `Highest quality video for this topic (Score: ${v.engagementScore}/100)` : `Recommended video #${i + 1}`
-          }))
-        }))
+        videoId: primaryVideo.videoId,
+        title: primaryVideo.title,
+        channel: primaryVideo.author,
+        views: primaryVideo.viewCount.toLocaleString(),
+        duration: formatDuration(primaryVideo.lengthSeconds),
+        thumbnail: primaryVideo.thumbnail,
+        url: `https://invidious.io/watch?v=${primaryVideo.videoId}`,
+        reason: `Best educational video for "${sanitizedTopic}" with ${primaryVideo.viewCount.toLocaleString()} views`,
+        subtasks: subtasksWithVideos,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
