@@ -45,6 +45,28 @@ interface Todo {
   description: string | null;
 }
 
+interface SubtaskVideo {
+  videoId: string;
+  title: string;
+  channel: string;
+  engagementScore?: number;
+  reason?: string;
+}
+
+interface SubtaskData {
+  title?: string;
+  videos?: SubtaskVideo[];
+}
+
+interface FindVideoResponse {
+  videoId?: string;
+  title?: string;
+  channel?: string;
+  reason?: string;
+  subtasks?: SubtaskData[];
+  error?: string;
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, profile, logout } = useAuth();
@@ -109,10 +131,10 @@ const Dashboard = () => {
 
       let videoId: string | null = null;
       let videoDescription: string | null = null;
-      let subtasksData: Record<string, unknown>[] = [];
+      let subtasksData: SubtaskData[] = [];
 
       try {
-        const { data: videoData, error: videoError } = await supabase.functions.invoke(
+        const { data: videoData, error: videoError } = await supabase.functions.invoke<FindVideoResponse>(
           'find-video',
           {
             body: {
@@ -130,9 +152,14 @@ const Dashboard = () => {
           console.error('Video search error response:', videoData.error);
           toast.error('Video search error: ' + videoData.error);
         } else if (videoData) {
-          videoId = videoData.videoId;
-          videoDescription = `${videoData.title} by ${videoData.channel} - ${videoData.reason}`;
-          subtasksData = videoData.subtasks || [];
+          videoId = videoData.videoId ?? null;
+          videoDescription =
+            videoData.title && videoData.channel
+              ? `${videoData.title} by ${videoData.channel} - ${videoData.reason ?? ""}`
+              : null;
+
+          subtasksData = videoData.subtasks ?? [];
+
           if (!videoId) {
             toast.error('AI returned video info but no video ID was provided');
           }
@@ -159,7 +186,7 @@ const Dashboard = () => {
       // Save subtasks and their videos to the database
       if (data && subtasksData.length > 0) {
         for (let i = 0; i < subtasksData.length; i++) {
-          const subtask = subtasksData[i] as Record<string, unknown>;
+          const subtask = subtasksData[i];
 
           // Insert subtask
           const { data: subtaskRow, error: subtaskError } = await supabase
@@ -178,19 +205,26 @@ const Dashboard = () => {
             continue;
           }
 
-          // Insert videos for this subtask
-          const videos = (subtask.videos as unknown[]) || [];
-          if (subtaskRow && Array.isArray(videos) && videos.length > 0) {
-            const videosToInsert = videos.map((video: Record<string, unknown>, idx: number) => ({
-              subtask_id: subtaskRow.id,
-              user_id: user.id,
-              video_id: String(video.videoId),
-              title: String(video.title),
-              channel: String(video.channel),
-              engagement_score: typeof video.engagementScore === 'number' ? video.engagementScore : 0,
-              reason: String(video.reason),
-              order_index: idx,
-            }));
+          if (
+            subtaskRow &&
+            Array.isArray(subtask.videos) &&
+            subtask.videos.length > 0
+          ) {
+            const videosToInsert = subtask.videos.map(
+              (video, idx) => ({
+                subtask_id: subtaskRow.id,
+                user_id: user.id,
+                video_id: video.videoId,
+                title: video.title,
+                channel: video.channel,
+                engagement_score:
+                  typeof video.engagementScore === "number"
+                    ? video.engagementScore
+                    : 0,
+                reason: video.reason ?? "",
+                order_index: idx,
+              }),
+            );
 
             const { error: videosError } = await supabase
               .from('subtask_videos')

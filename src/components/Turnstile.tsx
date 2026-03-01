@@ -1,15 +1,33 @@
 import React, { useEffect, useRef, useImperativeHandle } from 'react';
 
-// Cloudflare injects a global `turnstile` object once the script loads.
-// We declare it here so TypeScript doesn't complain when we access it.
+/**
+ * Type definitions for Cloudflare Turnstile
+ */
 
+interface TurnstileRenderOptions {
+  sitekey: string;
+  callback?: (token: string) => void;
+  "error-callback"?: () => void;
+  "expired-callback"?: () => void;
+}
+
+type TurnstileWidgetId = string;
+
+interface TurnstileAPI {
+  render: (
+    el: HTMLElement,
+    opts: TurnstileRenderOptions
+  ) => TurnstileWidgetId;
+  reset: (widgetId: TurnstileWidgetId) => void;
+  remove?: (widgetId: TurnstileWidgetId) => void;
+}
+
+/**
+ * Extend globalThis instead of Window (Deno 2 compatible)
+ */
 declare global {
-  interface Window {
-    turnstile?: {
-      render: (el: HTMLElement, opts: Record<string, any>) => any;
-      reset: (widgetId: any) => void;
-      remove?: (widgetId: any) => void; // used for cleanup
-    };
+  interface globalThis {
+    turnstile?: TurnstileAPI;
   }
 }
 
@@ -22,8 +40,8 @@ export interface TurnstileHandle {
 
 interface TurnstileProps {
   /**
-   * Site key for the Cloudflare Turnstile widget.  If omitted the
-   * value from `import.meta.env.VITE_TURNSTILE_SITE_KEY` will be used.
+   * Site key for the Cloudflare Turnstile widget.
+   * If omitted the value from VITE_TURNSTILE_SITE_KEY will be used.
    */
   siteKey?: string;
   onVerify: (token: string) => void;
@@ -32,7 +50,7 @@ interface TurnstileProps {
 const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
   ({ siteKey, onVerify }, ref) => {
     const widgetRef = useRef<HTMLDivElement>(null);
-    const widgetIdRef = useRef<string | null>(null);
+    const widgetIdRef = useRef<TurnstileWidgetId | null>(null);
 
     // expose imperative methods
     useImperativeHandle(ref, () => ({
@@ -40,9 +58,9 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
         try {
           const id = widgetIdRef.current;
           const container = widgetRef.current;
-          if (id && window.turnstile && container?.isConnected) {
-            window.turnstile.reset(id);
-          } else if (!window.turnstile) {
+          if (id && globalThis.turnstile && container?.isConnected) {
+            globalThis.turnstile.reset(id);
+          } else if (!globalThis.turnstile) {
             console.warn('[Turnstile] reset called but script not loaded');
           }
         } catch (err) {
@@ -76,10 +94,9 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
       }
 
       const interval = setInterval(() => {
-        // only attempt to render when the global and element are ready and we haven't already
-        if (window.turnstile && widgetRef.current && !widgetIdRef.current) {
+        if (globalThis.turnstile && widgetRef.current && !widgetIdRef.current) {
           try {
-            const id = window.turnstile.render(widgetRef.current, {
+            const id = globalThis.turnstile.render(widgetRef.current, {
               sitekey: resolvedKey,
               callback: (token: string) => onVerify(token),
               'error-callback': () => onVerify(''),
@@ -98,11 +115,10 @@ const Turnstile = React.forwardRef<TurnstileHandle, TurnstileProps>(
         clearInterval(interval);
         if (widgetIdRef.current) {
           try {
-            if (window.turnstile?.remove) {
-              window.turnstile.remove(widgetIdRef.current);
-            } else if (window.turnstile) {
-              // also try to reset as a fallback
-              window.turnstile.reset(widgetIdRef.current);
+            if (globalThis.turnstile?.remove) {
+              globalThis.turnstile.remove(widgetIdRef.current);
+            } else if (globalThis.turnstile) {
+              globalThis.turnstile.reset(widgetIdRef.current);
             }
           } catch (err) {
             console.error('[Turnstile] cleanup error', err);
