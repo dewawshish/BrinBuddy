@@ -112,23 +112,14 @@ const Dashboard = () => {
       let subtasksData: Record<string, unknown>[] = [];
 
       try {
-        // include the current user's access token so the edge function can authorize
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token;
-
-        const invokePayload: any = {
-          body: {
-            topic: newTodoTitle.trim(),
-            turnstileToken: captchaToken, // pass captcha token for backend verification
-          },
-        };
-        if (accessToken) {
-          invokePayload.headers = { Authorization: `Bearer ${accessToken}` };
-        }
-
         const { data: videoData, error: videoError } = await supabase.functions.invoke(
           'find-video',
-          invokePayload,
+          {
+            body: {
+              topic: newTodoTitle.trim(),
+              turnstileToken: captchaToken, // pass captcha token for backend verification
+            },
+          }
         );
 
         if (videoError) {
